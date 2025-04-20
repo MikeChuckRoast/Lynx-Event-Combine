@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             databasePathText = new TextBox();
             label1 = new Label();
             chooseDirButton = new Button();
@@ -36,6 +37,7 @@
             label3 = new Label();
             mainEventComboBox = new ComboBox();
             combineButton = new Button();
+            splitLifButton = new Button();
             SuspendLayout();
             // 
             // databasePathText
@@ -104,7 +106,7 @@
             // 
             // combineButton
             // 
-            combineButton.Location = new Point(174, 270);
+            combineButton.Location = new Point(95, 269);
             combineButton.Name = "combineButton";
             combineButton.Size = new Size(75, 23);
             combineButton.TabIndex = 8;
@@ -112,11 +114,22 @@
             combineButton.UseVisualStyleBackColor = true;
             combineButton.Click += combineButton_Click;
             // 
+            // splitLifButton
+            // 
+            splitLifButton.Location = new Point(250, 269);
+            splitLifButton.Name = "splitLifButton";
+            splitLifButton.Size = new Size(75, 23);
+            splitLifButton.TabIndex = 9;
+            splitLifButton.Text = "Split LIF file";
+            splitLifButton.UseVisualStyleBackColor = true;
+            splitLifButton.Click += splitLifButton_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(510, 316);
+            Controls.Add(splitLifButton);
             Controls.Add(combineButton);
             Controls.Add(mainEventComboBox);
             Controls.Add(label3);
@@ -125,6 +138,7 @@
             Controls.Add(chooseDirButton);
             Controls.Add(label1);
             Controls.Add(databasePathText);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "Lynx Event Combine";
             ResumeLayout(false);
@@ -141,5 +155,6 @@
         private Label label3;
         private ComboBox mainEventComboBox;
         private Button combineButton;
+        private Button splitLifButton;
     }
 }

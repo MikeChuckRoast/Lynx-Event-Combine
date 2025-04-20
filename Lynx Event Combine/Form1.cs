@@ -82,5 +82,23 @@ namespace Lynx_Event_Combine
                 );
             }
         }
+
+        private void splitLifButton_Click(object sender, EventArgs e)
+        {
+            if (eventManager == null || !eventManager.hasCombinedData)
+            {
+                MessageBox.Show("You must combine events first.");
+                return;
+            }
+            (var success, var message) = eventManager.SplitLif();
+            if (success)
+            {
+                MessageBox.Show("Events split successfully.");
+            }
+            else
+            {
+                MessageBox.Show($"There was an error splitting the events: {message}");
+            }
+        }
     }
 }

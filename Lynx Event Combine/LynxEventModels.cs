@@ -9,6 +9,7 @@
         public double distance;
         public string fullTextString = "";
         public List<EventEntry> entries = new List<EventEntry>();
+        public string displayName = "";
     }
 
     class EventEntry
