@@ -14,8 +14,8 @@
 
     class EventEntry
     {
-        public int athleteNumber;
-        public int laneNumber;
+        public string athleteNumber = "";
+        public string laneNumber = "";
         public string lastName = "";
         public string firstName = "";
         public string teamName = "";

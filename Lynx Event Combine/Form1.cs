@@ -64,7 +64,12 @@ namespace Lynx_Event_Combine
             var mainEvent = mainEventComboBox.SelectedItem?.ToString();
             if (string.IsNullOrEmpty(mainEvent))
             {
-                MessageBox.Show("The selected main event is invalid.");
+                MessageBox.Show(
+                    "The selected main event is invalid.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
                 return;
             }
 
@@ -78,7 +83,10 @@ namespace Lynx_Event_Combine
             else
             {
                 MessageBox.Show(
-                    "There was a duplicate athlete ID or lane number after combining. Check the entries in your meet management software."
+                    "There was a duplicate athlete ID or lane number after combining. Check the entries in your meet management software.",
+                    "Duplicate ID",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
                 );
             }
         }
@@ -87,17 +95,32 @@ namespace Lynx_Event_Combine
         {
             if (eventManager == null || !eventManager.hasCombinedData)
             {
-                MessageBox.Show("You must combine events first.");
+                MessageBox.Show(
+                    "You must combine events first.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
             (var success, var message) = eventManager.SplitLif();
             if (success)
             {
-                MessageBox.Show("Events split successfully.");
+                MessageBox.Show(
+                    "Events split successfully.",
+                    "Split Successful",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
             }
             else
             {
-                MessageBox.Show($"There was an error splitting the events: {message}");
+                MessageBox.Show(
+                    $"There was an error splitting the events: {message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
     }

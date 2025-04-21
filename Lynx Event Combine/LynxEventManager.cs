@@ -66,12 +66,8 @@
                     {
                         var entry = new EventEntry
                         {
-                            athleteNumber = int.TryParse(values[1], out int athleteNumber)
-                                ? athleteNumber
-                                : 0,
-                            laneNumber = int.TryParse(values[2], out int laneNumber)
-                                ? laneNumber
-                                : 0,
+                            athleteNumber = values[1],
+                            laneNumber = values[2],
                             lastName = values[3],
                             firstName = values[4],
                             teamName = values[5],
@@ -86,6 +82,9 @@
         public bool CombineEvents(string mainEventName, List<string> eventNamesToCombine)
         {
             bool noDuplicates = true;
+
+            // Make sure eventNamesToCombine doesn't include mainEventName
+            eventNamesToCombine = eventNamesToCombine.Where(e => !e.Equals(mainEventName)).ToList();
 
             // Write new event file, combining the selected events
             using (var writer = new StreamWriter(eventFilePath))
@@ -110,8 +109,14 @@
                             .ToList();
 
                         // track lane and athlete IDs to avoid duplicates
-                        var laneNumbers = new HashSet<int>();
-                        var athleteNumbers = new HashSet<int>();
+                        var laneNumbers = new HashSet<string>();
+                        var athleteNumbers = new HashSet<string>();
+                        // Add all lane and athlete numbers from main event
+                        foreach (var entry in _mainEvent.entries)
+                        {
+                            laneNumbers.Add(entry.laneNumber);
+                            athleteNumbers.Add(entry.athleteNumber);
+                        }
 
                         foreach (var combinedEvent in _eventsToCombine)
                         {
@@ -122,7 +127,7 @@
                                 if (
                                     laneNumbers.Contains(entry.laneNumber)
                                     || (
-                                        entry.athleteNumber != 0
+                                        !String.IsNullOrEmpty(entry.athleteNumber)
                                         && athleteNumbers.Contains(entry.athleteNumber)
                                     )
                                 )
@@ -157,41 +162,107 @@
                 Path.GetDirectoryName(eventFilePath) ?? "",
                 $"{_mainEvent.eventNumber.ToString("D3")}-{_mainEvent.roundNumber}-{_mainEvent.heatNumber.ToString("D2")}.lif"
             );
-
             if (!File.Exists(lifFilePath))
             {
                 return (false, $"LIF file not found: {lifFilePath}");
             }
 
+            // Read the original LIF file into an array of strings
+            var lifFileLines = File.ReadAllLines(lifFilePath);
+
             // Create a new LIF file for each event in _eventsToCombine
             foreach (var eventToCombine in _eventsToCombine)
+            {
+                if (!WriteFilteredLif(eventToCombine, lifFileLines, lifFilePath))
+                {
+                    return (
+                        false,
+                        $"Failed to write LIF file for event: {eventToCombine.displayName}"
+                    );
+                }
+            }
+            // Create a new LIF file for the main event
+            if (!WriteFilteredLif(_mainEvent, lifFileLines, lifFilePath))
+            {
+                return (false, $"Failed to write LIF file for event: {_mainEvent.displayName}");
+            }
+
+            // Great success!
+            return (true, "LIF files split successfully.");
+        }
+
+        private bool WriteFilteredLif(
+            Event eventToCombine,
+            string[] lifFileLines,
+            string lifFilePath
+        )
+        {
+            try
             {
                 string newLifFilePath = Path.Combine(
                     Path.GetDirectoryName(lifFilePath) ?? "",
                     $"{eventToCombine.eventNumber.ToString("D3")}-{eventToCombine.roundNumber}-{eventToCombine.heatNumber.ToString("D2")}.lif"
                 );
-                using (var reader = new StreamReader(lifFilePath))
+
                 using (var writer = new StreamWriter(newLifFilePath))
                 {
                     // Update the first line to use the new event/round/heat numbers and event name
-                    var firstLine = reader.ReadLine();
-                    // Replace everything before the 4th comma with the new event details
-                    var newFirstLine =
-                        $"{eventToCombine.eventNumber},{eventToCombine.roundNumber},{eventToCombine.heatNumber},{eventToCombine.eventName}";
-                    writer.WriteLine(newFirstLine);
-
-                    // Write the rest of the lines from the original LIF file
-                    while (!reader.EndOfStream)
+                    var firstLine = lifFileLines.FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(firstLine))
                     {
-                        var line = reader.ReadLine();
-                        // Write the line to the new LIF file
-                        writer.WriteLine(line);
+                        var firstLineSplit = firstLine.Split(',');
+                        var restOfLine = string.Join(",", firstLineSplit.Skip(4));
+                        var newFirstLine =
+                            $"{eventToCombine.eventNumber},{eventToCombine.roundNumber},{eventToCombine.heatNumber},{eventToCombine.eventName},{restOfLine}";
+                        writer.WriteLine(newFirstLine);
+                    }
+
+                    // Process the rest of the lines
+                    foreach (var line in lifFileLines.Skip(1))
+                    {
+                        if (string.IsNullOrWhiteSpace(line))
+                            continue;
+
+                        // Write the line to the new LIF file if it matches the original entries
+                        if (CheckResultInOriginalEntries(line, eventToCombine))
+                        {
+                            writer.WriteLine(line);
+                        }
                     }
                 }
+                return true;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error writing LIF file: {ex.Message}");
+                return false;
+            }
+        }
 
-            // Great success!
-            return (true, "LIF files split successfully.");
+        private bool CheckResultInOriginalEntries(string lifLine, Event originalEvent)
+        {
+            var splitLine = lifLine.Split(',');
+            if (splitLine.Length < 3)
+            {
+                return false;
+            }
+            var laneNumber = splitLine[2];
+            var athleteNumber = splitLine[1];
+            // Check if the lane number and athlete number exist in the original event's entries
+            foreach (var entry in originalEvent.entries)
+            {
+                if (
+                    entry.laneNumber.Equals(laneNumber)
+                    && (
+                        String.IsNullOrEmpty(entry.athleteNumber)
+                        || entry.athleteNumber.Equals(athleteNumber)
+                    )
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
