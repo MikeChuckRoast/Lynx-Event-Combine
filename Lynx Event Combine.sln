@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35818.85 d17.13
+VisualStudioVersion = 17.13.35818.85
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lynx Event Combine", "Lynx Event Combine\Lynx Event Combine.csproj", "{4D73A4E4-BA6F-4DAE-A70B-D68D1309968F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LynxEventCombineTest", "LynxEventCombineTest\LynxEventCombineTest.csproj", "{A5F33D49-B951-4137-B734-D3EF7A08DF82}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{4D73A4E4-BA6F-4DAE-A70B-D68D1309968F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D73A4E4-BA6F-4DAE-A70B-D68D1309968F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D73A4E4-BA6F-4DAE-A70B-D68D1309968F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5F33D49-B951-4137-B734-D3EF7A08DF82}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5F33D49-B951-4137-B734-D3EF7A08DF82}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5F33D49-B951-4137-B734-D3EF7A08DF82}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5F33D49-B951-4137-B734-D3EF7A08DF82}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -275,8 +275,13 @@
             return false;
         }
 
-        private string StripGenderedEventName(string eventFileLine)
+        public static string StripGenderedEventName(string eventFileLine)
         {
+            if (eventFileLine == null)
+            {
+                return String.Empty;
+            }
+
             // Split the eventFileLine into parts
             var parts = eventFileLine.Split(',');
 
