@@ -12,6 +12,7 @@ namespace Lynx_Event_Combine
         private void LoadEventData(string eventFilePath)
         {
             eventManager = new LynxEventManager(eventFilePath);
+            eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
             mainEventComboBox.Items.Clear();
             eventListBox.Items.Clear();
 
@@ -122,6 +123,12 @@ namespace Lynx_Event_Combine
                     MessageBoxIcon.Error
                 );
             }
+        }
+
+        private void removeGenderCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (eventManager != null)
+                eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
         }
     }
 }
