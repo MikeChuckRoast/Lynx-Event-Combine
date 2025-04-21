@@ -1,6 +1,6 @@
 ﻿namespace Lynx_Event_Combine
 {
-    class LynxEventManager
+    public class LynxEventManager
     {
         public string eventFilePath { get; set; }
         public List<Event> events { get; set; }
@@ -16,6 +16,9 @@
         {
             get { return _mainEvent != null && _eventsToCombine.Count > 0; }
         }
+
+        // Option to remove gendered event name
+        public bool removeGenderedEventName { get; set; } = true;
 
         public LynxEventManager(string eventFilePath)
         {
@@ -92,7 +95,14 @@
                 foreach (var ev in events)
                 {
                     // Write all events back to file
-                    writer.WriteLine(ev.fullTextString);
+                    if (ev.displayName.Equals(mainEventName) && removeGenderedEventName)
+                    {
+                        writer.WriteLine(StripGenderedEventName(ev.fullTextString));
+                    }
+                    else
+                    {
+                        writer.WriteLine(ev.fullTextString);
+                    }
 
                     // Write all original entries back to file
                     foreach (var entry in ev.entries)
@@ -263,6 +273,38 @@
                 }
             }
             return false;
+        }
+
+        private string StripGenderedEventName(string eventFileLine)
+        {
+            // Split the eventFileLine into parts
+            var parts = eventFileLine.Split(',');
+
+            // Ensure the line has enough parts to include an event name
+            if (parts.Length > 3)
+            {
+                // Get the event name
+                var eventName = parts[3];
+
+                // Check if the event name starts with a gendered prefix
+                var nameParts = eventName.Split(' ');
+                if (
+                    nameParts.Length > 1
+                    && (
+                        nameParts[0].StartsWith("Girl", StringComparison.OrdinalIgnoreCase)
+                        || nameParts[0].StartsWith("Boy", StringComparison.OrdinalIgnoreCase)
+                        || nameParts[0].StartsWith("Men", StringComparison.OrdinalIgnoreCase)
+                        || nameParts[0].StartsWith("Women", StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    // Replace the event name with the new name (without the gendered prefix)
+                    parts[3] = string.Join(" ", nameParts.Skip(1));
+                }
+            }
+
+            // Reconstruct and return the full eventFileLine
+            return string.Join(",", parts);
         }
     }
 }

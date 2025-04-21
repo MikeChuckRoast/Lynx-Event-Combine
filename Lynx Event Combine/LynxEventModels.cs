@@ -1,6 +1,6 @@
 ﻿namespace Lynx_Event_Combine
 {
-    class Event
+    public class Event
     {
         public int eventNumber;
         public int roundNumber;
@@ -12,7 +12,7 @@
         public string displayName = "";
     }
 
-    class EventEntry
+    public class EventEntry
     {
         public string athleteNumber = "";
         public string laneNumber = "";
