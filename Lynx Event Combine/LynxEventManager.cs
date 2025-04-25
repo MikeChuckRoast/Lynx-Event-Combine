@@ -89,6 +89,15 @@
             // Make sure eventNamesToCombine doesn't include mainEventName
             eventNamesToCombine = eventNamesToCombine.Where(e => !e.Equals(mainEventName)).ToList();
 
+            // Backup the event file
+            string backupFilePath =
+                eventFilePath + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".bak";
+            if (File.Exists(backupFilePath))
+            {
+                File.Delete(backupFilePath);
+            }
+            File.Copy(eventFilePath, backupFilePath);
+
             // Write new event file, combining the selected events
             using (var writer = new StreamWriter(eventFilePath))
             {
