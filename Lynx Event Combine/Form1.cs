@@ -135,5 +135,73 @@ namespace Lynx_Event_Combine
             if (eventManager != null)
                 eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
         }
+
+        #region Speed Buttons
+        private void autoConfigureForEvent(string eventName)
+        {
+            // Find first matching name in mainEventComboBox and select it
+            for (int i = 0; i < mainEventComboBox.Items.Count; i++)
+            {
+                var item = mainEventComboBox.Items[i]?.ToString();
+                if (item != null && item.Contains(eventName))
+                {
+                    mainEventComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+            // Clear all selections in eventListBox
+            eventListBox.ClearSelected();
+
+            // Find all matching names in eventListBox and select them (excluding the main event)
+            for (int i = 0; i < eventListBox.Items.Count; i++)
+            {
+                var item = eventListBox.Items[i]?.ToString();
+                if (
+                    item != null
+                    && item.Contains(eventName)
+                    && !item.Equals(mainEventComboBox.SelectedItem?.ToString())
+                )
+                {
+                    eventListBox.SetSelected(i, true);
+                }
+            }
+        }
+
+        private void relay100mButton_Click(object sender, EventArgs e)
+        {
+            autoConfigureForEvent("4x100");
+        }
+
+        #endregion Speed Buttons
+
+        private void relay200mButton_Click(object sender, EventArgs e)
+        {
+            autoConfigureForEvent("4x200");
+        }
+
+        private void relay400mButton_Click(object sender, EventArgs e)
+        {
+            autoConfigureForEvent("4x400");
+        }
+
+        private void relay800mButton_Click(object sender, EventArgs e)
+        {
+            autoConfigureForEvent("4x800");
+        }
+
+        private void run800mButton_Click(object sender, EventArgs e)
+        {
+            autoConfigureForEvent("800 Meters");
+        }
+
+        private void run1600mButton_Click(object sender, EventArgs e)
+        {
+            autoConfigureForEvent("1600 Meters");
+        }
+
+        private void run3200mButton_Click(object sender, EventArgs e)
+        {
+            autoConfigureForEvent("3200 Meters");
+        }
     }
 }

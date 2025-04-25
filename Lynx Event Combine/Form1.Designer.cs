@@ -43,9 +43,18 @@
             reloadButton = new Button();
             tableLayoutPanel3 = new TableLayoutPanel();
             removeGenderCheckBox = new CheckBox();
+            tableLayoutPanel4 = new TableLayoutPanel();
+            run3200mButton = new Button();
+            run1600mButton = new Button();
+            run800mButton = new Button();
+            relay800mButton = new Button();
+            relay400mButton = new Button();
+            relay200mButton = new Button();
+            relay100mButton = new Button();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
             tableLayoutPanel3.SuspendLayout();
+            tableLayoutPanel4.SuspendLayout();
             SuspendLayout();
             // 
             // databasePathText
@@ -82,17 +91,17 @@
             eventListBox.Dock = DockStyle.Fill;
             eventListBox.FormattingEnabled = true;
             eventListBox.ItemHeight = 15;
-            eventListBox.Location = new Point(3, 186);
+            eventListBox.Location = new Point(3, 226);
             eventListBox.Name = "eventListBox";
             eventListBox.SelectionMode = SelectionMode.MultiSimple;
-            eventListBox.Size = new Size(519, 218);
+            eventListBox.Size = new Size(519, 178);
             eventListBox.TabIndex = 3;
             // 
             // label2
             // 
             label2.Anchor = AnchorStyles.Left;
             label2.AutoSize = true;
-            label2.Location = new Point(3, 165);
+            label2.Location = new Point(3, 205);
             label2.Name = "label2";
             label2.Size = new Size(121, 15);
             label2.TabIndex = 4;
@@ -102,7 +111,7 @@
             // 
             label3.Anchor = AnchorStyles.Left;
             label3.AutoSize = true;
-            label3.Location = new Point(3, 64);
+            label3.Location = new Point(3, 104);
             label3.Name = "label3";
             label3.Size = new Size(316, 15);
             label3.TabIndex = 6;
@@ -113,7 +122,7 @@
             mainEventComboBox.Dock = DockStyle.Fill;
             mainEventComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             mainEventComboBox.FormattingEnabled = true;
-            mainEventComboBox.Location = new Point(3, 85);
+            mainEventComboBox.Location = new Point(3, 125);
             mainEventComboBox.Name = "mainEventComboBox";
             mainEventComboBox.Size = new Size(519, 23);
             mainEventComboBox.TabIndex = 7;
@@ -145,18 +154,20 @@
             tableLayoutPanel1.ColumnCount = 1;
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel1.Controls.Add(tableLayoutPanel2, 0, 1);
-            tableLayoutPanel1.Controls.Add(label2, 0, 5);
+            tableLayoutPanel1.Controls.Add(label2, 0, 6);
             tableLayoutPanel1.Controls.Add(tableLayoutPanel3, 0, 7);
             tableLayoutPanel1.Controls.Add(label1, 0, 0);
-            tableLayoutPanel1.Controls.Add(eventListBox, 0, 6);
-            tableLayoutPanel1.Controls.Add(removeGenderCheckBox, 0, 4);
-            tableLayoutPanel1.Controls.Add(mainEventComboBox, 0, 3);
-            tableLayoutPanel1.Controls.Add(label3, 0, 2);
+            tableLayoutPanel1.Controls.Add(eventListBox, 0, 7);
+            tableLayoutPanel1.Controls.Add(removeGenderCheckBox, 0, 5);
+            tableLayoutPanel1.Controls.Add(mainEventComboBox, 0, 4);
+            tableLayoutPanel1.Controls.Add(label3, 0, 3);
+            tableLayoutPanel1.Controls.Add(tableLayoutPanel4, 0, 2);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.Location = new Point(0, 0);
             tableLayoutPanel1.Name = "tableLayoutPanel1";
-            tableLayoutPanel1.RowCount = 8;
+            tableLayoutPanel1.RowCount = 9;
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 21F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 21F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
@@ -215,13 +226,122 @@
             removeGenderCheckBox.AutoSize = true;
             removeGenderCheckBox.Checked = true;
             removeGenderCheckBox.CheckState = CheckState.Checked;
-            removeGenderCheckBox.Location = new Point(3, 132);
+            removeGenderCheckBox.Location = new Point(3, 172);
             removeGenderCheckBox.Name = "removeGenderCheckBox";
             removeGenderCheckBox.Size = new Size(216, 19);
             removeGenderCheckBox.TabIndex = 11;
             removeGenderCheckBox.Text = "Remove gendered name from event";
             removeGenderCheckBox.UseVisualStyleBackColor = true;
             removeGenderCheckBox.CheckedChanged += removeGenderCheckBox_CheckedChanged;
+            // 
+            // tableLayoutPanel4
+            // 
+            tableLayoutPanel4.ColumnCount = 7;
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.2857141F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.2857141F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.2857141F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.2857141F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.2857141F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.2857141F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.2857141F));
+            tableLayoutPanel4.Controls.Add(run3200mButton, 6, 0);
+            tableLayoutPanel4.Controls.Add(run1600mButton, 5, 0);
+            tableLayoutPanel4.Controls.Add(run800mButton, 4, 0);
+            tableLayoutPanel4.Controls.Add(relay800mButton, 3, 0);
+            tableLayoutPanel4.Controls.Add(relay400mButton, 2, 0);
+            tableLayoutPanel4.Controls.Add(relay200mButton, 1, 0);
+            tableLayoutPanel4.Controls.Add(relay100mButton, 0, 0);
+            tableLayoutPanel4.Dock = DockStyle.Fill;
+            tableLayoutPanel4.Location = new Point(3, 64);
+            tableLayoutPanel4.Name = "tableLayoutPanel4";
+            tableLayoutPanel4.RowCount = 1;
+            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel4.Size = new Size(519, 34);
+            tableLayoutPanel4.TabIndex = 12;
+            // 
+            // run3200mButton
+            // 
+            run3200mButton.Dock = DockStyle.Fill;
+            run3200mButton.FlatStyle = FlatStyle.Flat;
+            run3200mButton.Location = new Point(447, 3);
+            run3200mButton.Name = "run3200mButton";
+            run3200mButton.Size = new Size(69, 28);
+            run3200mButton.TabIndex = 6;
+            run3200mButton.Text = "3200m";
+            run3200mButton.UseVisualStyleBackColor = true;
+            run3200mButton.Click += run3200mButton_Click;
+            // 
+            // run1600mButton
+            // 
+            run1600mButton.Dock = DockStyle.Fill;
+            run1600mButton.FlatStyle = FlatStyle.Flat;
+            run1600mButton.Location = new Point(373, 3);
+            run1600mButton.Name = "run1600mButton";
+            run1600mButton.Size = new Size(68, 28);
+            run1600mButton.TabIndex = 5;
+            run1600mButton.Text = "1600m";
+            run1600mButton.UseVisualStyleBackColor = true;
+            run1600mButton.Click += run1600mButton_Click;
+            // 
+            // run800mButton
+            // 
+            run800mButton.Dock = DockStyle.Fill;
+            run800mButton.FlatStyle = FlatStyle.Flat;
+            run800mButton.Location = new Point(299, 3);
+            run800mButton.Name = "run800mButton";
+            run800mButton.Size = new Size(68, 28);
+            run800mButton.TabIndex = 4;
+            run800mButton.Text = "800m";
+            run800mButton.UseVisualStyleBackColor = true;
+            run800mButton.Click += run800mButton_Click;
+            // 
+            // relay800mButton
+            // 
+            relay800mButton.Dock = DockStyle.Fill;
+            relay800mButton.FlatStyle = FlatStyle.Flat;
+            relay800mButton.Location = new Point(225, 3);
+            relay800mButton.Name = "relay800mButton";
+            relay800mButton.Size = new Size(68, 28);
+            relay800mButton.TabIndex = 3;
+            relay800mButton.Text = "4x800";
+            relay800mButton.UseVisualStyleBackColor = true;
+            relay800mButton.Click += relay800mButton_Click;
+            // 
+            // relay400mButton
+            // 
+            relay400mButton.Dock = DockStyle.Fill;
+            relay400mButton.FlatStyle = FlatStyle.Flat;
+            relay400mButton.Location = new Point(151, 3);
+            relay400mButton.Name = "relay400mButton";
+            relay400mButton.Size = new Size(68, 28);
+            relay400mButton.TabIndex = 2;
+            relay400mButton.Text = "4x400";
+            relay400mButton.UseVisualStyleBackColor = true;
+            relay400mButton.Click += relay400mButton_Click;
+            // 
+            // relay200mButton
+            // 
+            relay200mButton.Dock = DockStyle.Fill;
+            relay200mButton.FlatStyle = FlatStyle.Flat;
+            relay200mButton.Location = new Point(77, 3);
+            relay200mButton.Name = "relay200mButton";
+            relay200mButton.Size = new Size(68, 28);
+            relay200mButton.TabIndex = 1;
+            relay200mButton.Text = "4x200";
+            relay200mButton.UseVisualStyleBackColor = true;
+            relay200mButton.Click += relay200mButton_Click;
+            // 
+            // relay100mButton
+            // 
+            relay100mButton.Dock = DockStyle.Fill;
+            relay100mButton.FlatStyle = FlatStyle.Flat;
+            relay100mButton.Location = new Point(3, 3);
+            relay100mButton.Name = "relay100mButton";
+            relay100mButton.Size = new Size(68, 28);
+            relay100mButton.TabIndex = 0;
+            relay100mButton.Text = "4x100";
+            relay100mButton.UseVisualStyleBackColor = true;
+            relay100mButton.Click += relay100mButton_Click;
             // 
             // Form1
             // 
@@ -238,6 +358,7 @@
             tableLayoutPanel2.ResumeLayout(false);
             tableLayoutPanel2.PerformLayout();
             tableLayoutPanel3.ResumeLayout(false);
+            tableLayoutPanel4.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -257,5 +378,13 @@
         private TableLayoutPanel tableLayoutPanel3;
         private CheckBox removeGenderCheckBox;
         private Button reloadButton;
+        private TableLayoutPanel tableLayoutPanel4;
+        private Button relay100mButton;
+        private Button run3200mButton;
+        private Button run1600mButton;
+        private Button run800mButton;
+        private Button relay800mButton;
+        private Button relay400mButton;
+        private Button relay200mButton;
     }
 }
