@@ -8,7 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Authors>Happy Pace Timing, L.L.C.</Authors>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <ApplicationIcon>combine_events.ico</ApplicationIcon>
   </PropertyGroup>
 
