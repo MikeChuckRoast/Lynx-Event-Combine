@@ -44,6 +44,11 @@ namespace Lynx_Event_Combine
             LoadEventData(databasePathText.Text);
         }
 
+        private void reloadButton_Click(object sender, EventArgs e)
+        {
+            LoadEventData(databasePathText.Text);
+        }
+
         private void combineButton_Click(object sender, EventArgs e)
         {
             if (eventManager == null)

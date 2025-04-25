@@ -40,6 +40,7 @@
             splitLifButton = new Button();
             tableLayoutPanel1 = new TableLayoutPanel();
             tableLayoutPanel2 = new TableLayoutPanel();
+            reloadButton = new Button();
             tableLayoutPanel3 = new TableLayoutPanel();
             removeGenderCheckBox = new CheckBox();
             tableLayoutPanel1.SuspendLayout();
@@ -52,7 +53,7 @@
             databasePathText.Dock = DockStyle.Top;
             databasePathText.Location = new Point(3, 3);
             databasePathText.Name = "databasePathText";
-            databasePathText.Size = new Size(390, 23);
+            databasePathText.Size = new Size(351, 23);
             databasePathText.TabIndex = 0;
             databasePathText.TextChanged += databasePathText_TextChanged;
             // 
@@ -68,7 +69,7 @@
             // 
             // chooseDirButton
             // 
-            chooseDirButton.Location = new Point(399, 3);
+            chooseDirButton.Location = new Point(360, 3);
             chooseDirButton.Name = "chooseDirButton";
             chooseDirButton.Size = new Size(75, 23);
             chooseDirButton.TabIndex = 2;
@@ -84,7 +85,7 @@
             eventListBox.Location = new Point(3, 186);
             eventListBox.Name = "eventListBox";
             eventListBox.SelectionMode = SelectionMode.MultiSimple;
-            eventListBox.Size = new Size(477, 199);
+            eventListBox.Size = new Size(519, 218);
             eventListBox.TabIndex = 3;
             // 
             // label2
@@ -114,13 +115,13 @@
             mainEventComboBox.FormattingEnabled = true;
             mainEventComboBox.Location = new Point(3, 85);
             mainEventComboBox.Name = "mainEventComboBox";
-            mainEventComboBox.Size = new Size(477, 23);
+            mainEventComboBox.Size = new Size(519, 23);
             mainEventComboBox.TabIndex = 7;
             // 
             // combineButton
             // 
             combineButton.Anchor = AnchorStyles.None;
-            combineButton.Location = new Point(81, 5);
+            combineButton.Location = new Point(92, 5);
             combineButton.Name = "combineButton";
             combineButton.Size = new Size(75, 23);
             combineButton.TabIndex = 8;
@@ -131,7 +132,7 @@
             // splitLifButton
             // 
             splitLifButton.Anchor = AnchorStyles.None;
-            splitLifButton.Location = new Point(320, 5);
+            splitLifButton.Location = new Point(351, 5);
             splitLifButton.Name = "splitLifButton";
             splitLifButton.Size = new Size(75, 23);
             splitLifButton.TabIndex = 9;
@@ -163,23 +164,35 @@
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 21F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            tableLayoutPanel1.Size = new Size(483, 428);
+            tableLayoutPanel1.Size = new Size(525, 447);
             tableLayoutPanel1.TabIndex = 10;
             // 
             // tableLayoutPanel2
             // 
-            tableLayoutPanel2.ColumnCount = 2;
+            tableLayoutPanel2.ColumnCount = 3;
             tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle());
             tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle());
             tableLayoutPanel2.Controls.Add(databasePathText, 0, 0);
             tableLayoutPanel2.Controls.Add(chooseDirButton, 1, 0);
+            tableLayoutPanel2.Controls.Add(reloadButton, 2, 0);
             tableLayoutPanel2.Dock = DockStyle.Fill;
             tableLayoutPanel2.Location = new Point(3, 24);
             tableLayoutPanel2.Name = "tableLayoutPanel2";
             tableLayoutPanel2.RowCount = 1;
             tableLayoutPanel2.RowStyles.Add(new RowStyle());
-            tableLayoutPanel2.Size = new Size(477, 34);
+            tableLayoutPanel2.Size = new Size(519, 34);
             tableLayoutPanel2.TabIndex = 11;
+            // 
+            // reloadButton
+            // 
+            reloadButton.Location = new Point(441, 3);
+            reloadButton.Name = "reloadButton";
+            reloadButton.Size = new Size(75, 23);
+            reloadButton.TabIndex = 3;
+            reloadButton.Text = "Reload";
+            reloadButton.UseVisualStyleBackColor = true;
+            reloadButton.Click += reloadButton_Click;
             // 
             // tableLayoutPanel3
             // 
@@ -189,11 +202,11 @@
             tableLayoutPanel3.Controls.Add(splitLifButton, 1, 0);
             tableLayoutPanel3.Controls.Add(combineButton, 0, 0);
             tableLayoutPanel3.Dock = DockStyle.Fill;
-            tableLayoutPanel3.Location = new Point(3, 391);
+            tableLayoutPanel3.Location = new Point(3, 410);
             tableLayoutPanel3.Name = "tableLayoutPanel3";
             tableLayoutPanel3.RowCount = 1;
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel3.Size = new Size(477, 34);
+            tableLayoutPanel3.Size = new Size(519, 34);
             tableLayoutPanel3.TabIndex = 11;
             // 
             // removeGenderCheckBox
@@ -214,7 +227,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(483, 428);
+            ClientSize = new Size(525, 447);
             Controls.Add(tableLayoutPanel1);
             Icon = (Icon)resources.GetObject("$this.Icon");
             MinimumSize = new Size(348, 325);
@@ -243,5 +256,6 @@
         private TableLayoutPanel tableLayoutPanel2;
         private TableLayoutPanel tableLayoutPanel3;
         private CheckBox removeGenderCheckBox;
+        private Button reloadButton;
     }
 }
