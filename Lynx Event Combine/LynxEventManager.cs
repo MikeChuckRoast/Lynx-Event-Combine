@@ -284,7 +284,7 @@
             return false;
         }
 
-        public static string StripGenderedEventName(string eventFileLine)
+        public static string StripGenderedEventName(string? eventFileLine)
         {
             if (eventFileLine == null)
             {

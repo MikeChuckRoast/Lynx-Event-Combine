@@ -11,15 +11,28 @@ namespace Lynx_Event_Combine
 
         private void LoadEventData(string eventFilePath)
         {
-            eventManager = new LynxEventManager(eventFilePath);
-            eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
-            mainEventComboBox.Items.Clear();
-            eventListBox.Items.Clear();
-
-            if (eventManager != null && eventManager.events != null)
+            try
             {
-                mainEventComboBox.Items.AddRange(eventManager.eventNames.ToArray());
-                eventListBox.Items.AddRange(eventManager.eventNames.ToArray());
+                eventManager = new LynxEventManager(eventFilePath);
+                eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
+                mainEventComboBox.Items.Clear();
+                eventListBox.Items.Clear();
+
+                if (eventManager != null && eventManager.events != null)
+                {
+                    mainEventComboBox.Items.AddRange(eventManager.eventNames.ToArray());
+                    eventListBox.Items.AddRange(eventManager.eventNames.ToArray());
+                }
+            }
+            catch (Exception ex)
+            {
+                eventManager = null;
+                MessageBox.Show(
+                    $"Could not load event file:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
 
@@ -41,11 +54,17 @@ namespace Lynx_Event_Combine
 
         private void databasePathText_TextChanged(object sender, EventArgs e)
         {
+            if (string.IsNullOrWhiteSpace(databasePathText.Text))
+                return;
+
             LoadEventData(databasePathText.Text);
         }
 
         private void reloadButton_Click(object sender, EventArgs e)
         {
+            if (string.IsNullOrWhiteSpace(databasePathText.Text))
+                return;
+
             LoadEventData(databasePathText.Text);
         }
 
