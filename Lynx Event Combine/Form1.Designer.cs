@@ -42,7 +42,10 @@
             tableLayoutPanel2 = new TableLayoutPanel();
             reloadButton = new Button();
             tableLayoutPanel3 = new TableLayoutPanel();
+            tableLayoutPanel5 = new TableLayoutPanel();
             removeGenderCheckBox = new CheckBox();
+            reassignLanesCheckBox = new CheckBox();
+            newEventNumberCheckBox = new CheckBox();
             tableLayoutPanel4 = new TableLayoutPanel();
             run3200mButton = new Button();
             run1600mButton = new Button();
@@ -55,6 +58,7 @@
             tableLayoutPanel2.SuspendLayout();
             tableLayoutPanel3.SuspendLayout();
             tableLayoutPanel4.SuspendLayout();
+            tableLayoutPanel5.SuspendLayout();
             SuspendLayout();
             // 
             // databasePathText
@@ -158,7 +162,7 @@
             tableLayoutPanel1.Controls.Add(tableLayoutPanel3, 0, 7);
             tableLayoutPanel1.Controls.Add(label1, 0, 0);
             tableLayoutPanel1.Controls.Add(eventListBox, 0, 7);
-            tableLayoutPanel1.Controls.Add(removeGenderCheckBox, 0, 5);
+            tableLayoutPanel1.Controls.Add(tableLayoutPanel5, 0, 5);
             tableLayoutPanel1.Controls.Add(mainEventComboBox, 0, 4);
             tableLayoutPanel1.Controls.Add(label3, 0, 3);
             tableLayoutPanel1.Controls.Add(tableLayoutPanel4, 0, 2);
@@ -219,21 +223,62 @@
             tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tableLayoutPanel3.Size = new Size(519, 34);
             tableLayoutPanel3.TabIndex = 11;
-            // 
+            //
+            // tableLayoutPanel5
+            //
+            tableLayoutPanel5.ColumnCount = 3;
+            tableLayoutPanel5.ColumnStyles.Add(new ColumnStyle());
+            tableLayoutPanel5.ColumnStyles.Add(new ColumnStyle());
+            tableLayoutPanel5.ColumnStyles.Add(new ColumnStyle());
+            tableLayoutPanel5.Controls.Add(removeGenderCheckBox, 0, 0);
+            tableLayoutPanel5.Controls.Add(reassignLanesCheckBox, 1, 0);
+            tableLayoutPanel5.Controls.Add(newEventNumberCheckBox, 2, 0);
+            tableLayoutPanel5.Dock = DockStyle.Fill;
+            tableLayoutPanel5.Location = new Point(3, 165);
+            tableLayoutPanel5.Name = "tableLayoutPanel5";
+            tableLayoutPanel5.RowCount = 1;
+            tableLayoutPanel5.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel5.Size = new Size(554, 34);
+            tableLayoutPanel5.TabIndex = 13;
+            //
             // removeGenderCheckBox
-            // 
+            //
             removeGenderCheckBox.Anchor = AnchorStyles.Left;
             removeGenderCheckBox.AutoSize = true;
             removeGenderCheckBox.Checked = true;
             removeGenderCheckBox.CheckState = CheckState.Checked;
-            removeGenderCheckBox.Location = new Point(3, 172);
+            removeGenderCheckBox.Location = new Point(3, 7);
             removeGenderCheckBox.Name = "removeGenderCheckBox";
             removeGenderCheckBox.Size = new Size(216, 19);
             removeGenderCheckBox.TabIndex = 11;
             removeGenderCheckBox.Text = "Remove gendered name from event";
             removeGenderCheckBox.UseVisualStyleBackColor = true;
-            removeGenderCheckBox.CheckedChanged += removeGenderCheckBox_CheckedChanged;
-            // 
+            removeGenderCheckBox.CheckedChanged += combineOptionCheckBox_CheckedChanged;
+            //
+            // reassignLanesCheckBox
+            //
+            reassignLanesCheckBox.Anchor = AnchorStyles.Left;
+            reassignLanesCheckBox.AutoSize = true;
+            reassignLanesCheckBox.Location = new Point(225, 7);
+            reassignLanesCheckBox.Name = "reassignLanesCheckBox";
+            reassignLanesCheckBox.Size = new Size(150, 19);
+            reassignLanesCheckBox.TabIndex = 12;
+            reassignLanesCheckBox.Text = "Re-assign lane numbers";
+            reassignLanesCheckBox.UseVisualStyleBackColor = true;
+            reassignLanesCheckBox.CheckedChanged += combineOptionCheckBox_CheckedChanged;
+            //
+            // newEventNumberCheckBox
+            //
+            newEventNumberCheckBox.Anchor = AnchorStyles.Left;
+            newEventNumberCheckBox.AutoSize = true;
+            newEventNumberCheckBox.Location = new Point(381, 7);
+            newEventNumberCheckBox.Name = "newEventNumberCheckBox";
+            newEventNumberCheckBox.Size = new Size(170, 19);
+            newEventNumberCheckBox.TabIndex = 13;
+            newEventNumberCheckBox.Text = "Write to new event number";
+            newEventNumberCheckBox.UseVisualStyleBackColor = true;
+            newEventNumberCheckBox.CheckedChanged += combineOptionCheckBox_CheckedChanged;
+            //
             // tableLayoutPanel4
             // 
             tableLayoutPanel4.ColumnCount = 7;
@@ -347,7 +392,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(525, 447);
+            ClientSize = new Size(560, 447);
             Controls.Add(tableLayoutPanel1);
             Icon = (Icon)resources.GetObject("$this.Icon");
             MinimumSize = new Size(348, 325);
@@ -359,6 +404,8 @@
             tableLayoutPanel2.PerformLayout();
             tableLayoutPanel3.ResumeLayout(false);
             tableLayoutPanel4.ResumeLayout(false);
+            tableLayoutPanel5.ResumeLayout(false);
+            tableLayoutPanel5.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -376,7 +423,10 @@
         private TableLayoutPanel tableLayoutPanel1;
         private TableLayoutPanel tableLayoutPanel2;
         private TableLayoutPanel tableLayoutPanel3;
+        private TableLayoutPanel tableLayoutPanel5;
         private CheckBox removeGenderCheckBox;
+        private CheckBox reassignLanesCheckBox;
+        private CheckBox newEventNumberCheckBox;
         private Button reloadButton;
         private TableLayoutPanel tableLayoutPanel4;
         private Button relay100mButton;

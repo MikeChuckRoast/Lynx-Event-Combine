@@ -12,6 +12,10 @@
         // Saved events from last combine action
         private Event? _mainEvent;
         private List<Event> _eventsToCombine = new List<Event>();
+
+        // The event that holds the combined entries, and therefore the results, after the
+        // race is run. Same as the main event unless the combine was written to a new event.
+        private Event? _lifSourceEvent;
         public bool hasCombinedData
         {
             get { return _mainEvent != null && _eventsToCombine.Count > 0; }
@@ -19,6 +23,18 @@
 
         // Option to remove gendered event name
         public bool removeGenderedEventName { get; set; } = true;
+
+        // Option to number the combined entries 1..n instead of keeping their original lanes
+        public bool reassignLanes { get; set; } = false;
+
+        // Option to write the combined entries to a new event instead of into the main event
+        public bool writeToNewEvent { get; set; } = false;
+
+        // Event number created by the last combine, when writeToNewEvent was set
+        public int? lastNewEventNumber { get; private set; }
+
+        // Non-fatal problem from the last combine, such as a schedule file that could not be updated
+        public string? lastCombineWarning { get; private set; }
 
         public LynxEventManager(string eventFilePath)
         {
@@ -68,8 +84,7 @@
                                 ? distance
                                 : 0,
                             fullTextString = line,
-                            displayName =
-                                $"{eventName} ({eventNumber},{roundNumber},{heatNumber})",
+                            displayName = $"{eventName} ({eventNumber},{roundNumber},{heatNumber})",
                         };
                         events.Add(currentEvent);
                     }
@@ -102,26 +117,46 @@
         public bool CombineEvents(string mainEventName, List<string> eventNamesToCombine)
         {
             bool noDuplicates = true;
+            lastCombineWarning = null;
+            lastNewEventNumber = null;
 
             // Make sure eventNamesToCombine doesn't include mainEventName
             eventNamesToCombine = eventNamesToCombine.Where(e => !e.Equals(mainEventName)).ToList();
 
-            // Backup the event file
-            string backupFilePath =
-                eventFilePath + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".bak";
-            if (File.Exists(backupFilePath))
+            var mainEvent = events.FirstOrDefault(e => e.displayName.Equals(mainEventName));
+            Event? newEvent = null;
+
+            if (mainEvent != null)
             {
-                File.Delete(backupFilePath);
+                _mainEvent = mainEvent;
+                _eventsToCombine = events
+                    .Where(e => eventNamesToCombine.Contains(e.displayName))
+                    .ToList();
+
+                noDuplicates = AssignCombinedLanes(mainEvent, _eventsToCombine);
+
+                if (writeToNewEvent)
+                {
+                    newEvent = BuildNewCombinedEvent(mainEvent, _eventsToCombine);
+                }
+                _lifSourceEvent = newEvent;
             }
-            File.Copy(eventFilePath, backupFilePath);
+
+            // Backup the event file
+            BackupFile(eventFilePath);
 
             // Write new event file, combining the selected events
             using (var writer = new StreamWriter(eventFilePath))
             {
                 foreach (var ev in events)
                 {
+                    bool isMainEvent = ev == mainEvent;
+
+                    // The main event only becomes the combined event when we write in place
+                    bool isCombinedEvent = isMainEvent && !writeToNewEvent;
+
                     // Write all events back to file
-                    if (ev.displayName.Equals(mainEventName) && removeGenderedEventName)
+                    if (isCombinedEvent && removeGenderedEventName)
                     {
                         writer.WriteLine(StripGenderedEventName(ev.fullTextString));
                     }
@@ -133,57 +168,262 @@
                     // Write all original entries back to file
                     foreach (var entry in ev.entries)
                     {
-                        writer.WriteLine(entry.fullTextString);
+                        writer.WriteLine(
+                            isCombinedEvent ? CombinedEntryLine(entry) : entry.fullTextString
+                        );
                     }
 
                     // If this is the main event whose entries we want to combine, write the entries from the eventsToCombine
-                    if (ev.displayName.Equals(mainEventName))
+                    if (isCombinedEvent)
                     {
-                        _mainEvent = ev;
-                        _eventsToCombine = events
-                            .Where(e => eventNamesToCombine.Contains(e.displayName))
-                            .ToList();
+                        WriteCombinedEntries(writer, _eventsToCombine);
+                    }
+                }
 
-                        // track lane and athlete IDs to avoid duplicates
-                        var laneNumbers = new HashSet<string>();
-                        var athleteNumbers = new HashSet<string>();
-                        // Add all lane and athlete numbers from main event
-                        foreach (var entry in _mainEvent.entries)
-                        {
-                            laneNumbers.Add(entry.laneNumber);
-                            athleteNumbers.Add(entry.athleteNumber);
-                        }
+                // Otherwise the combine goes to a brand new event at the end of the file
+                if (newEvent != null)
+                {
+                    writer.WriteLine(newEvent.fullTextString);
+                    foreach (var entry in newEvent.entries)
+                    {
+                        writer.WriteLine(entry.fullTextString);
+                    }
+                }
+            }
 
-                        foreach (var combinedEvent in _eventsToCombine)
-                        {
-                            // Write the entries from the event to combine
-                            foreach (var entry in combinedEvent.entries)
-                            {
-                                // Check if lane or athlete number exists
-                                if (
-                                    laneNumbers.Contains(entry.laneNumber)
-                                    || (
-                                        !String.IsNullOrEmpty(entry.athleteNumber)
-                                        && athleteNumbers.Contains(entry.athleteNumber)
-                                    )
-                                )
-                                {
-                                    noDuplicates = false;
-                                }
-                                else
-                                {
-                                    laneNumbers.Add(entry.laneNumber);
-                                    athleteNumbers.Add(entry.athleteNumber);
-                                }
+            if (newEvent != null && mainEvent != null)
+            {
+                UpdateScheduleFile(mainEvent, newEvent);
 
-                                writer.WriteLine(entry.fullTextString);
-                            }
-                        }
+                // Keep the in-memory list in step with the file so a second combine
+                // doesn't hand out the same event number again
+                events.Add(newEvent);
+                lastNewEventNumber = newEvent.eventNumber;
+            }
+
+            return noDuplicates;
+        }
+
+        /// <summary>
+        /// Works out the lane each entry will run in once the events are combined, and reports
+        /// whether that produced any duplicates. When reassignLanes is set the combined entries
+        /// are numbered 1..n so lanes cannot collide, and only athlete numbers are checked.
+        /// </summary>
+        private bool AssignCombinedLanes(Event mainEvent, List<Event> eventsToCombine)
+        {
+            bool noDuplicates = true;
+
+            // Drop any assignment left over from a previous combine
+            foreach (var ev in events)
+            {
+                foreach (var entry in ev.entries)
+                {
+                    entry.assignedLaneNumber = "";
+                }
+            }
+
+            // track lane and athlete IDs to avoid duplicates
+            var laneNumbers = new HashSet<string>();
+            var athleteNumbers = new HashSet<string>();
+            int nextLaneNumber = 1;
+
+            // Add all lane and athlete numbers from main event
+            foreach (var entry in mainEvent.entries)
+            {
+                if (reassignLanes)
+                {
+                    entry.assignedLaneNumber = (nextLaneNumber++).ToString();
+                }
+                laneNumbers.Add(entry.laneNumber);
+                athleteNumbers.Add(entry.athleteNumber);
+            }
+
+            foreach (var combinedEvent in eventsToCombine)
+            {
+                foreach (var entry in combinedEvent.entries)
+                {
+                    if (reassignLanes)
+                    {
+                        entry.assignedLaneNumber = (nextLaneNumber++).ToString();
+                    }
+
+                    // Check if lane or athlete number exists
+                    if (
+                        (!reassignLanes && laneNumbers.Contains(entry.laneNumber))
+                        || (
+                            !String.IsNullOrEmpty(entry.athleteNumber)
+                            && athleteNumbers.Contains(entry.athleteNumber)
+                        )
+                    )
+                    {
+                        noDuplicates = false;
+                    }
+                    else
+                    {
+                        laneNumbers.Add(entry.laneNumber);
+                        athleteNumbers.Add(entry.athleteNumber);
                     }
                 }
             }
 
             return noDuplicates;
+        }
+
+        /// <summary>
+        /// Builds the event that will hold the combined entries, using the next unused event number.
+        /// </summary>
+        private Event BuildNewCombinedEvent(Event mainEvent, List<Event> eventsToCombine)
+        {
+            int newEventNumber = events.Count > 0 ? events.Max(e => e.eventNumber) + 1 : 1;
+
+            var headerLine = removeGenderedEventName
+                ? StripGenderedEventName(mainEvent.fullTextString)
+                : mainEvent.fullTextString;
+
+            var parts = headerLine.Split(',');
+            if (parts.Length > 2)
+            {
+                parts[0] = newEventNumber.ToString();
+                parts[1] = "1";
+                parts[2] = "1";
+                headerLine = string.Join(",", parts);
+            }
+            var eventName = parts.Length > 3 ? parts[3] : mainEvent.eventName;
+
+            return new Event
+            {
+                eventNumber = newEventNumber,
+                roundNumber = 1,
+                heatNumber = 1,
+                eventName = eventName,
+                distance = mainEvent.distance,
+                fullTextString = headerLine,
+                displayName = $"{eventName} ({newEventNumber},1,1)",
+                // Snapshot the entries rather than sharing them, so this event keeps the lanes
+                // it was written with even if the source events are combined again later
+                entries = mainEvent
+                    .entries.Concat(eventsToCombine.SelectMany(e => e.entries))
+                    .Select(entry => new EventEntry
+                    {
+                        athleteNumber = entry.athleteNumber,
+                        laneNumber = string.IsNullOrEmpty(entry.assignedLaneNumber)
+                            ? entry.laneNumber
+                            : entry.assignedLaneNumber,
+                        lastName = entry.lastName,
+                        firstName = entry.firstName,
+                        teamName = entry.teamName,
+                        fullTextString = CombinedEntryLine(entry),
+                    })
+                    .ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Adds the new event to the schedule file, immediately before the main event it was
+        /// combined from. A schedule that cannot be updated is reported through lastCombineWarning
+        /// rather than failing the combine, since the event file has already been written.
+        /// </summary>
+        private void UpdateScheduleFile(Event mainEvent, Event newEvent)
+        {
+            // FinishLynx pairs lynx.evt with lynx.sch, so the schedule takes the event file's name
+            string scheduleFilePath = Path.Combine(
+                Path.GetDirectoryName(eventFilePath) ?? "",
+                Path.GetFileNameWithoutExtension(eventFilePath) + ".sch"
+            );
+
+            if (!File.Exists(scheduleFilePath))
+            {
+                lastCombineWarning =
+                    $"Schedule file not found: {scheduleFilePath}\r\n\r\n"
+                    + $"Event {newEvent.eventNumber} was added to the event file only.";
+                return;
+            }
+
+            try
+            {
+                BackupFile(scheduleFilePath);
+
+                var scheduleLines = File.ReadAllLines(scheduleFilePath).ToList();
+                var newScheduleLine =
+                    $"{newEvent.eventNumber},{newEvent.roundNumber},{newEvent.heatNumber}";
+
+                int insertIndex = scheduleLines.FindIndex(line =>
+                    ScheduleLineMatchesEvent(line, mainEvent)
+                );
+                if (insertIndex < 0)
+                {
+                    scheduleLines.Add(newScheduleLine);
+                    lastCombineWarning =
+                        $"Event {mainEvent.eventNumber},{mainEvent.roundNumber},{mainEvent.heatNumber} "
+                        + $"was not found in {Path.GetFileName(scheduleFilePath)}.\r\n\r\n"
+                        + $"Event {newEvent.eventNumber} was added to the end of the schedule instead.";
+                }
+                else
+                {
+                    scheduleLines.Insert(insertIndex, newScheduleLine);
+                }
+
+                File.WriteAllLines(scheduleFilePath, scheduleLines);
+            }
+            catch (Exception ex)
+            {
+                lastCombineWarning = $"Could not update the schedule file: {ex.Message}";
+            }
+        }
+
+        private static bool ScheduleLineMatchesEvent(string scheduleLine, Event ev)
+        {
+            var parts = scheduleLine.Split(',');
+            return parts.Length >= 3
+                && int.TryParse(parts[0], out int eventNumber)
+                && eventNumber == ev.eventNumber
+                && int.TryParse(parts[1], out int roundNumber)
+                && roundNumber == ev.roundNumber
+                && int.TryParse(parts[2], out int heatNumber)
+                && heatNumber == ev.heatNumber;
+        }
+
+        private static void WriteCombinedEntries(StreamWriter writer, List<Event> eventsToWrite)
+        {
+            foreach (var ev in eventsToWrite)
+            {
+                foreach (var entry in ev.entries)
+                {
+                    writer.WriteLine(CombinedEntryLine(entry));
+                }
+            }
+        }
+
+        private static string CombinedEntryLine(EventEntry entry)
+        {
+            return string.IsNullOrEmpty(entry.assignedLaneNumber)
+                ? entry.fullTextString
+                : ReplaceLaneNumber(entry.fullTextString, entry.assignedLaneNumber);
+        }
+
+        private static void BackupFile(string filePath)
+        {
+            string backupFilePath =
+                filePath + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".bak";
+            if (File.Exists(backupFilePath))
+            {
+                File.Delete(backupFilePath);
+            }
+            File.Copy(filePath, backupFilePath);
+        }
+
+        /// <summary>
+        /// Replaces the lane field, which is the third column of both entry lines and LIF result lines.
+        /// </summary>
+        private static string ReplaceLaneNumber(string line, string laneNumber)
+        {
+            var parts = line.Split(',');
+            if (parts.Length < 3)
+            {
+                return line;
+            }
+            parts[2] = laneNumber;
+            return string.Join(",", parts);
         }
 
         public (bool, string) SplitLif()
@@ -193,10 +433,11 @@
                 return (false, "No events were previously combined.");
             }
 
-            // Find LIF file corresponding to main event
+            // Find LIF file corresponding to the event the combined entries were written to
+            var resultsEvent = _lifSourceEvent ?? _mainEvent;
             string lifFilePath = Path.Combine(
                 Path.GetDirectoryName(eventFilePath) ?? "",
-                $"{_mainEvent.eventNumber.ToString("D3")}-{_mainEvent.roundNumber}-{_mainEvent.heatNumber.ToString("D2")}.lif"
+                $"{resultsEvent.eventNumber.ToString("D3")}-{resultsEvent.roundNumber}-{resultsEvent.heatNumber.ToString("D2")}.lif"
             );
             if (!File.Exists(lifFilePath))
             {
@@ -260,10 +501,17 @@
                             continue;
 
                         // Write the line to the new LIF file if it matches the original entries
-                        if (CheckResultInOriginalEntries(line, eventToCombine))
-                        {
-                            writer.WriteLine(line);
-                        }
+                        var matchingEntry = FindResultInOriginalEntries(line, eventToCombine);
+                        if (matchingEntry == null)
+                            continue;
+
+                        // Hand the result back with the lane the athlete was originally seeded in,
+                        // which is what the meet management software is expecting
+                        writer.WriteLine(
+                            string.IsNullOrEmpty(matchingEntry.assignedLaneNumber)
+                                ? line
+                                : ReplaceLaneNumber(line, matchingEntry.laneNumber)
+                        );
                     }
                 }
                 return true;
@@ -275,30 +523,36 @@
             }
         }
 
-        private bool CheckResultInOriginalEntries(string lifLine, Event originalEvent)
+        private static EventEntry? FindResultInOriginalEntries(string lifLine, Event originalEvent)
         {
             var splitLine = lifLine.Split(',');
             if (splitLine.Length < 3)
             {
-                return false;
+                return null;
             }
             var laneNumber = splitLine[2];
             var athleteNumber = splitLine[1];
             // Check if the lane number and athlete number exist in the original event's entries
             foreach (var entry in originalEvent.entries)
             {
+                // The result carries the lane the athlete actually ran in, which is the
+                // re-assigned lane whenever the combine renumbered them
+                var runLaneNumber = string.IsNullOrEmpty(entry.assignedLaneNumber)
+                    ? entry.laneNumber
+                    : entry.assignedLaneNumber;
+
                 if (
-                    entry.laneNumber.Equals(laneNumber)
+                    runLaneNumber.Equals(laneNumber)
                     && (
                         String.IsNullOrEmpty(entry.athleteNumber)
                         || entry.athleteNumber.Equals(athleteNumber)
                     )
                 )
                 {
-                    return true;
+                    return entry;
                 }
             }
-            return false;
+            return null;
         }
 
         public static string StripGenderedEventName(string? eventFileLine)

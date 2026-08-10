@@ -15,7 +15,13 @@
     public class EventEntry
     {
         public string athleteNumber = "";
+
+        // Lane the entry was seeded in
         public string laneNumber = "";
+
+        // Lane the entry was given for the combined event, empty when lanes were not re-assigned
+        public string assignedLaneNumber = "";
+
         public string lastName = "";
         public string firstName = "";
         public string teamName = "";

@@ -167,6 +167,332 @@ namespace LynxEventCombineTest
         }
         #endregion CombineEvents Tests
 
+        #region Lane Re-assignment Tests
+        [Fact]
+        public void CombineEvents_ReassignLanes_ResolvesLaneConflicts()
+        {
+            // Arrange
+            string tempFilePath = CopyResourceToTempFile("lynx_w_conflicts.evt");
+
+            var manager = new LynxEventManager(tempFilePath) { reassignLanes = true };
+
+            // Act
+            bool result = manager.CombineEvents("Boys 4x400 Relay Varsity (39,1,1)", new List<string>
+            {
+                "Boys 4x400 Relay JV (40,1,1)",
+                "Girls 4x400 Relay Varsity (41,1,1)",
+                "Girls 4x400 Relay JV (42,1,1)"
+            });
+
+            // Assert
+            Assert.True(result, "Re-assigned lanes cannot collide, so the combine should report no duplicates.");
+
+            // The combined event is numbered straight through from 1
+            var combinedLanes = GetEntryLanes(tempFilePath, "39,1,1,");
+            Assert.Equal(new[] { "1", "2", "3", "4", "5", "6", "7", "8" }, combinedLanes);
+
+            // The events that were added keep the lanes they were seeded in
+            Assert.Equal(new[] { "1", "2" }, GetEntryLanes(tempFilePath, "41,1,1,"));
+            Assert.Equal(new[] { "1", "2" }, GetEntryLanes(tempFilePath, "42,1,1,"));
+            Assert.Equal(new[] { "7", "8" }, GetEntryLanes(tempFilePath, "40,1,1,"));
+
+            // Cleanup
+            File.Delete(tempFilePath);
+        }
+
+        [Fact]
+        public void CombineEvents_ReassignLanes_StillReportsDuplicateAthleteIds()
+        {
+            // Arrange
+            string tempFilePath = CopyResourceToTempFile("lynx_w_athlete_conflicts.evt");
+
+            var manager = new LynxEventManager(tempFilePath) { reassignLanes = true };
+
+            // Act
+            bool result = manager.CombineEvents("Boys 800 Meters Varsity (1,1,1)", new List<string>
+            {
+                "Boys 800 Meters JV (2,1,1)"
+            });
+
+            // Assert
+            Assert.False(result, "Re-assigning lanes should not hide a duplicate athlete ID.");
+
+            // Cleanup
+            File.Delete(tempFilePath);
+        }
+
+        [Fact]
+        public void SplitLif_RestoresOriginalLanesAfterReassignment()
+        {
+            // Arrange
+            string tempEventFilePath = CopyResourceToTempFile("lynx.evt");
+            string tempLifFilePath = Path.Combine(Path.GetTempPath(), "039-1-01.lif");
+
+            var manager = new LynxEventManager(tempEventFilePath) { reassignLanes = true };
+            manager.CombineEvents("Boys 4x400 Relay Varsity (39,1,1)", new List<string>
+            {
+                "Boys 4x400 Relay JV (40,1,1)",
+                "Girls 4x400 Relay Varsity (41,1,1)",
+                "Girls 4x400 Relay JV (42,1,1)"
+            });
+
+            // FinishLynx records results against the lanes the athletes actually ran in,
+            // which after re-assignment are 1 through 8
+            var lifLines = new List<string> { "39,1,1,4x400 Relay Varsity,,,,,,1600,18:47:26.4265" };
+            for (int lane = 1; lane <= 8; lane++)
+            {
+                lifLines.Add($"{lane},,{lane},Milan,,MILA  A,4:0{lane}.000");
+            }
+            File.WriteAllLines(tempLifFilePath, lifLines);
+
+            // Act
+            var (success, message) = manager.SplitLif();
+
+            // Assert
+            Assert.True(success, message);
+
+            // Each event gets its results back in the lanes it was seeded in:
+            // 39 ran 5,6  41 ran 1,2  42 ran 3,4  40 ran 7,8
+            Assert.Equal(new[] { "5", "6" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "039-1-01.lif")));
+            Assert.Equal(new[] { "1", "2" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "041-1-01.lif")));
+            Assert.Equal(new[] { "3", "4" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "042-1-01.lif")));
+            Assert.Equal(new[] { "7", "8" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "040-1-01.lif")));
+
+            // Cleanup
+            File.Delete(tempEventFilePath);
+            foreach (var eventNumber in new[] { "039", "040", "041", "042" })
+            {
+                File.Delete(Path.Combine(Path.GetTempPath(), $"{eventNumber}-1-01.lif"));
+            }
+        }
+        #endregion Lane Re-assignment Tests
+
+        #region New Event Number Tests
+        [Fact]
+        public void CombineEvents_NewEventNumber_AppendsEventAndLeavesMainEventAlone()
+        {
+            // Arrange
+            string tempFilePath = CopyResourceToTempFile("lynx.evt");
+
+            var manager = new LynxEventManager(tempFilePath) { writeToNewEvent = true };
+
+            // Act
+            bool result = manager.CombineEvents("Boys 4x400 Relay Varsity (39,1,1)", new List<string>
+            {
+                "Boys 4x400 Relay JV (40,1,1)",
+                "Girls 4x400 Relay Varsity (41,1,1)",
+                "Girls 4x400 Relay JV (42,1,1)"
+            });
+
+            // Assert
+            Assert.True(result, "CombineEvents should return true when there are no duplicate entries.");
+
+            // 42 is the highest event number in the file, so the combine goes to 43
+            Assert.Equal(43, manager.lastNewEventNumber);
+
+            string combinedFileContent = File.ReadAllText(tempFilePath);
+            Assert.Contains("43,1,1,4x400 Relay Varsity,,,,,,1600", combinedFileContent);
+            Assert.Equal(8, GetEntryLanes(tempFilePath, "43,1,1,").Length);
+
+            // The main event is untouched: it keeps its gendered name and only its own entries
+            Assert.Contains("39,1,1,Boys 4x400 Relay Varsity", combinedFileContent);
+            Assert.Equal(new[] { "5", "6" }, GetEntryLanes(tempFilePath, "39,1,1,"));
+
+            // Cleanup
+            File.Delete(tempFilePath);
+        }
+
+        [Fact]
+        public void CombineEvents_NewEventNumber_InsertsIntoScheduleBeforeMainEvent()
+        {
+            // Arrange
+            string tempFilePath = CopyResourceToTempFile("lynx.evt");
+            string tempSchedulePath = Path.ChangeExtension(tempFilePath, ".sch");
+            File.Copy(GetResourcePath("lynx.sch"), tempSchedulePath, overwrite: true);
+
+            var manager = new LynxEventManager(tempFilePath) { writeToNewEvent = true };
+
+            // Act
+            manager.CombineEvents("Boys 4x400 Relay Varsity (39,1,1)", new List<string>
+            {
+                "Boys 4x400 Relay JV (40,1,1)"
+            });
+
+            // Assert
+            Assert.Null(manager.lastCombineWarning);
+
+            var scheduleLines = File.ReadAllLines(tempSchedulePath);
+            int newEventIndex = Array.IndexOf(scheduleLines, "43,1,1");
+            int mainEventIndex = Array.IndexOf(scheduleLines, "39,1,1");
+
+            Assert.True(newEventIndex >= 0, "The new event was not added to the schedule.");
+            Assert.Equal(mainEventIndex - 1, newEventIndex);
+
+            // The schedule is backed up before it is rewritten
+            var scheduleBackups = Directory.GetFiles(
+                Path.GetTempPath(),
+                Path.GetFileName(tempSchedulePath) + "_*.bak"
+            );
+            Assert.NotEmpty(scheduleBackups);
+
+            // Cleanup
+            File.Delete(tempFilePath);
+            File.Delete(tempSchedulePath);
+            foreach (var backup in scheduleBackups)
+            {
+                File.Delete(backup);
+            }
+        }
+
+        [Fact]
+        public void CombineEvents_NewEventNumber_WarnsWhenScheduleFileIsMissing()
+        {
+            // Arrange
+            string tempFilePath = CopyResourceToTempFile("lynx.evt");
+            string tempSchedulePath = Path.ChangeExtension(tempFilePath, ".sch");
+            if (File.Exists(tempSchedulePath))
+            {
+                File.Delete(tempSchedulePath);
+            }
+
+            var manager = new LynxEventManager(tempFilePath) { writeToNewEvent = true };
+
+            // Act
+            bool result = manager.CombineEvents("Boys 4x400 Relay Varsity (39,1,1)", new List<string>
+            {
+                "Boys 4x400 Relay JV (40,1,1)"
+            });
+
+            // Assert: the event file still gets written, the schedule problem is only reported
+            Assert.True(result);
+            Assert.Equal(43, manager.lastNewEventNumber);
+            Assert.Contains("Schedule file not found", manager.lastCombineWarning);
+            Assert.Contains("43,1,1,4x400 Relay Varsity", File.ReadAllText(tempFilePath));
+
+            // Cleanup
+            File.Delete(tempFilePath);
+        }
+
+        [Fact]
+        public void SplitLif_UsesTheNewEventsLifFile()
+        {
+            // Arrange
+            string tempEventFilePath = CopyResourceToTempFile("lynx.evt");
+            string newEventLifPath = Path.Combine(Path.GetTempPath(), "043-1-01.lif");
+
+            var manager = new LynxEventManager(tempEventFilePath) { writeToNewEvent = true };
+            manager.CombineEvents("Boys 4x400 Relay Varsity (39,1,1)", new List<string>
+            {
+                "Boys 4x400 Relay JV (40,1,1)",
+                "Girls 4x400 Relay Varsity (41,1,1)",
+                "Girls 4x400 Relay JV (42,1,1)"
+            });
+
+            // Results come back against event 43, in the lanes the entries were seeded in
+            var lifLines = new List<string> { "43,1,1,4x400 Relay Varsity,,,,,,1600,18:47:26.4265" };
+            for (int lane = 1; lane <= 8; lane++)
+            {
+                lifLines.Add($"{lane},,{lane},Milan,,MILA  A,4:0{lane}.000");
+            }
+            File.WriteAllLines(newEventLifPath, lifLines);
+
+            // Act
+            var (success, message) = manager.SplitLif();
+
+            // Assert
+            Assert.True(success, message);
+            Assert.Equal(new[] { "5", "6" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "039-1-01.lif")));
+            Assert.Equal(new[] { "7", "8" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "040-1-01.lif")));
+            Assert.Equal(new[] { "1", "2" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "041-1-01.lif")));
+            Assert.Equal(new[] { "3", "4" }, GetLifLanes(Path.Combine(Path.GetTempPath(), "042-1-01.lif")));
+
+            // Cleanup
+            File.Delete(tempEventFilePath);
+            File.Delete(newEventLifPath);
+            foreach (var eventNumber in new[] { "039", "040", "041", "042" })
+            {
+                File.Delete(Path.Combine(Path.GetTempPath(), $"{eventNumber}-1-01.lif"));
+            }
+        }
+        #endregion New Event Number Tests
+
+        #region LoadEvents Tests
+        [Fact]
+        public void LoadEvents_HandlesLinesWithMissingTrailingFields()
+        {
+            // Arrange: an event file with no distance column and an entry with no team,
+            // which is what MeetUploader writes
+            string tempFilePath = CopyResourceToTempFile("lynx_short_fields.evt");
+
+            // Act
+            var manager = new LynxEventManager(tempFilePath);
+
+            // Assert
+            Assert.Equal(2, manager.events.Count);
+            Assert.Equal("Boys 100m (1,1,1)", manager.events[0].displayName);
+            Assert.Equal(0, manager.events[0].distance);
+            Assert.Equal(2, manager.events[0].entries.Count);
+
+            // The entry that stops after the first name still loads, with an empty team
+            var entryWithoutTeam = manager.events[0].entries[1];
+            Assert.Equal("2", entryWithoutTeam.laneNumber);
+            Assert.Equal("Jones", entryWithoutTeam.lastName);
+            Assert.Equal("", entryWithoutTeam.teamName);
+
+            // Cleanup
+            File.Delete(tempFilePath);
+        }
+        #endregion LoadEvents Tests
+
+        #region Helpers
+        private static string GetResourcePath(string fileName)
+        {
+            string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? string.Empty;
+            return Path.Combine(projectDirectory, "Resources", fileName);
+        }
+
+        private static string CopyResourceToTempFile(string fileName)
+        {
+            string tempFilePath = Path.GetTempFileName();
+            File.Copy(GetResourcePath(fileName), tempFilePath, overwrite: true);
+            return tempFilePath;
+        }
+
+        // Lane numbers of the entries belonging to the event whose header starts with eventHeaderPrefix
+        private static string[] GetEntryLanes(string eventFilePath, string eventHeaderPrefix)
+        {
+            var lanes = new List<string>();
+            bool inTargetEvent = false;
+
+            foreach (var line in File.ReadAllLines(eventFilePath))
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                // Entry lines start with a comma, event headers start with the event number
+                if (!line.StartsWith(","))
+                {
+                    inTargetEvent = line.StartsWith(eventHeaderPrefix);
+                }
+                else if (inTargetEvent)
+                {
+                    lanes.Add(line.Split(',')[2]);
+                }
+            }
+
+            return lanes.ToArray();
+        }
+
+        private static string[] GetLifLanes(string lifFilePath)
+        {
+            return File.ReadAllLines(lifFilePath)
+                .Skip(1)
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .Select(line => line.Split(',')[2])
+                .ToArray();
+        }
+        #endregion Helpers
+
         #region SplitLif Tests
         [Fact]
         public void SplitLif_SuccessfullySplitsLifFiles()
@@ -286,48 +612,5 @@ namespace LynxEventCombineTest
         }
 
         #endregion SplitLif Tests
-
-        #region LoadEvents Tests
-        [Fact]
-        public void LoadEvents_HandlesLinesWithMissingTrailingFields()
-        {
-            // Arrange: an event file with no distance column and an entry with no team,
-            // which is what MeetUploader writes
-            string tempFilePath = CopyResourceToTempFile("lynx_short_fields.evt");
-
-            // Act
-            var manager = new LynxEventManager(tempFilePath);
-
-            // Assert
-            Assert.Equal(2, manager.events.Count);
-            Assert.Equal("Boys 100m (1,1,1)", manager.events[0].displayName);
-            Assert.Equal(0, manager.events[0].distance);
-            Assert.Equal(2, manager.events[0].entries.Count);
-
-            // The entry that stops after the first name still loads, with an empty team
-            var entryWithoutTeam = manager.events[0].entries[1];
-            Assert.Equal("2", entryWithoutTeam.laneNumber);
-            Assert.Equal("Jones", entryWithoutTeam.lastName);
-            Assert.Equal("", entryWithoutTeam.teamName);
-
-            // Cleanup
-            File.Delete(tempFilePath);
-        }
-        #endregion LoadEvents Tests
-
-        #region Helpers
-        private static string GetResourcePath(string fileName)
-        {
-            string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? string.Empty;
-            return Path.Combine(projectDirectory, "Resources", fileName);
-        }
-
-        private static string CopyResourceToTempFile(string fileName)
-        {
-            string tempFilePath = Path.GetTempFileName();
-            File.Copy(GetResourcePath(fileName), tempFilePath, overwrite: true);
-            return tempFilePath;
-        }
-        #endregion Helpers
     }
 }

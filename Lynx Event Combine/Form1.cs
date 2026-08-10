@@ -14,7 +14,7 @@ namespace Lynx_Event_Combine
             try
             {
                 eventManager = new LynxEventManager(eventFilePath);
-                eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
+                ApplyCombineOptions();
                 mainEventComboBox.Items.Clear();
                 eventListBox.Items.Clear();
 
@@ -34,6 +34,16 @@ namespace Lynx_Event_Combine
                     MessageBoxIcon.Error
                 );
             }
+        }
+
+        private void ApplyCombineOptions()
+        {
+            if (eventManager == null)
+                return;
+
+            eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
+            eventManager.reassignLanes = reassignLanesCheckBox.Checked;
+            eventManager.writeToNewEvent = newEventNumberCheckBox.Checked;
         }
 
         private void chooseDirButton_Click(object sender, EventArgs e)
@@ -98,18 +108,48 @@ namespace Lynx_Event_Combine
                 return;
             }
 
+            ApplyCombineOptions();
+
             var eventsToCombine = eventListBox.SelectedItems.Cast<string>().ToList();
             var ok = eventManager.CombineEvents(mainEvent, eventsToCombine);
 
             if (ok)
             {
-                MessageBox.Show("Events combined successfully.");
+                var message = "Events combined successfully.";
+                if (eventManager.lastNewEventNumber.HasValue)
+                {
+                    message +=
+                        $"\r\n\r\nThe combined entries were written to new event {eventManager.lastNewEventNumber.Value}."
+                        + "\r\nReload to see it in the event list.";
+                }
+                if (eventManager.reassignLanes)
+                {
+                    message += "\r\nLane numbers were re-assigned starting at 1.";
+                }
+                MessageBox.Show(
+                    message,
+                    "Combine Successful",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
             }
             else
             {
                 MessageBox.Show(
-                    "There was a duplicate athlete ID or lane number after combining. Check the entries in your meet management software.",
+                    eventManager.reassignLanes
+                        ? "There was a duplicate athlete ID after combining. Check the entries in your meet management software."
+                        : "There was a duplicate athlete ID or lane number after combining. Check the entries in your meet management software.",
                     "Duplicate ID",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+            }
+
+            if (!string.IsNullOrEmpty(eventManager.lastCombineWarning))
+            {
+                MessageBox.Show(
+                    eventManager.lastCombineWarning,
+                    "Schedule File",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                 );
@@ -149,10 +189,9 @@ namespace Lynx_Event_Combine
             }
         }
 
-        private void removeGenderCheckBox_CheckedChanged(object sender, EventArgs e)
+        private void combineOptionCheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            if (eventManager != null)
-                eventManager.removeGenderedEventName = removeGenderCheckBox.Checked;
+            ApplyCombineOptions();
         }
 
         #region Speed Buttons
