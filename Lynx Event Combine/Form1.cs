@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Lynx_Event_Combine
 {
     public partial class Form1 : Form
@@ -7,7 +9,28 @@ namespace Lynx_Event_Combine
         public Form1()
         {
             InitializeComponent();
+            Text = $"{Text} v{GetAppVersion()}";
             UpdateCombineStatus();
+        }
+
+        /// <summary>
+        /// Returns the version from the assembly's informational version (the &lt;Version&gt; in the
+        /// project file), with any build metadata such as "+abc123" stripped off.
+        /// </summary>
+        private static string GetAppVersion()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var informational = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+
+            if (!string.IsNullOrWhiteSpace(informational))
+            {
+                var metadataIndex = informational.IndexOf('+');
+                return metadataIndex >= 0 ? informational[..metadataIndex] : informational;
+            }
+
+            return assembly.GetName().Version?.ToString(3) ?? "unknown";
         }
 
         private void LoadEventData(string eventFilePath)
