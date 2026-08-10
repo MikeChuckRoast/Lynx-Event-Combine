@@ -7,6 +7,7 @@ namespace Lynx_Event_Combine
         public Form1()
         {
             InitializeComponent();
+            UpdateCombineStatus();
         }
 
         private void LoadEventData(string eventFilePath)
@@ -15,14 +16,7 @@ namespace Lynx_Event_Combine
             {
                 eventManager = new LynxEventManager(eventFilePath);
                 ApplyCombineOptions();
-                mainEventComboBox.Items.Clear();
-                eventListBox.Items.Clear();
-
-                if (eventManager != null && eventManager.events != null)
-                {
-                    mainEventComboBox.Items.AddRange(eventManager.eventNames.ToArray());
-                    eventListBox.Items.AddRange(eventManager.eventNames.ToArray());
-                }
+                RefreshEventLists();
             }
             catch (Exception ex)
             {
@@ -34,6 +28,125 @@ namespace Lynx_Event_Combine
                     MessageBoxIcon.Error
                 );
             }
+
+            UpdateCombineStatus();
+            ShowCombineWarning();
+        }
+
+        /// <summary>
+        /// Refills the event lists from the manager. Called after a combine as well as after a
+        /// load, since combining rewrites the event file and can add an event or change an
+        /// event's name.
+        /// </summary>
+        /// <param name="preserveSelection">
+        /// Keeps the current selection, by position rather than by name. Only meaningful after a
+        /// combine, which leaves the events in the same order but can rename the main event.
+        /// </param>
+        private void RefreshEventLists(bool preserveSelection = false)
+        {
+            var previousMainEventIndex = mainEventComboBox.SelectedIndex;
+            var previousSelectedIndices = eventListBox.SelectedIndices.Cast<int>().ToArray();
+
+            mainEventComboBox.BeginUpdate();
+            eventListBox.BeginUpdate();
+            try
+            {
+                mainEventComboBox.Items.Clear();
+                eventListBox.Items.Clear();
+
+                if (eventManager != null && eventManager.events != null)
+                {
+                    var names = eventManager.eventNames.ToArray();
+                    mainEventComboBox.Items.AddRange(names);
+                    eventListBox.Items.AddRange(names);
+                }
+
+                if (!preserveSelection)
+                {
+                    return;
+                }
+
+                if (
+                    previousMainEventIndex >= 0
+                    && previousMainEventIndex < mainEventComboBox.Items.Count
+                )
+                {
+                    mainEventComboBox.SelectedIndex = previousMainEventIndex;
+                }
+                foreach (var index in previousSelectedIndices)
+                {
+                    if (index < eventListBox.Items.Count)
+                    {
+                        eventListBox.SetSelected(index, true);
+                    }
+                }
+            }
+            finally
+            {
+                eventListBox.EndUpdate();
+                mainEventComboBox.EndUpdate();
+            }
+        }
+
+        /// <summary>
+        /// Keeps the status line and the buttons that act on a saved combine in step with it.
+        /// </summary>
+        private void UpdateCombineStatus()
+        {
+            bool hasCombinedData = eventManager?.hasCombinedData == true;
+            splitLifButton.Enabled = hasCombinedData;
+            clearCombineButton.Enabled = hasCombinedData;
+
+            if (eventManager == null)
+            {
+                combineStatusLabel.Text = "No event file loaded.";
+            }
+            else if (!hasCombinedData)
+            {
+                combineStatusLabel.Text = "No combine saved for this event file.";
+            }
+            else
+            {
+                combineStatusLabel.Text =
+                    $"Combined: {eventManager.combineDescription} — "
+                    + (
+                        eventManager.lastCombine!.splitCompleted
+                            ? "results split."
+                            : "results not yet split."
+                    );
+            }
+        }
+
+        private void ShowCombineWarning()
+        {
+            if (string.IsNullOrEmpty(eventManager?.lastCombineWarning))
+                return;
+
+            MessageBox.Show(
+                eventManager.lastCombineWarning,
+                "Saved Combine",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+        }
+
+        /// <summary>
+        /// Checks before doing something that gives up a combine whose results have not been
+        /// split yet, which is the one way left to lose the information a split needs.
+        /// </summary>
+        private bool ConfirmDiscardCombine(string action)
+        {
+            if (eventManager?.hasCombinedData != true || eventManager.lastCombine!.splitCompleted)
+                return true;
+
+            return MessageBox.Show(
+                    $"{eventManager.combineDescription}\r\n\r\n"
+                        + $"Those results have not been split yet. {action} will discard the "
+                        + "information needed to split them.\r\n\r\nContinue?",
+                    "Results Not Yet Split",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning
+                ) == DialogResult.Yes;
         }
 
         private void ApplyCombineOptions()
@@ -108,10 +221,18 @@ namespace Lynx_Event_Combine
                 return;
             }
 
+            if (!ConfirmDiscardCombine("Combining again"))
+            {
+                return;
+            }
+
             ApplyCombineOptions();
 
             var eventsToCombine = eventListBox.SelectedItems.Cast<string>().ToList();
             var ok = eventManager.CombineEvents(mainEvent, eventsToCombine);
+
+            RefreshEventLists(preserveSelection: true);
+            UpdateCombineStatus();
 
             if (ok)
             {
@@ -119,8 +240,7 @@ namespace Lynx_Event_Combine
                 if (eventManager.lastNewEventNumber.HasValue)
                 {
                     message +=
-                        $"\r\n\r\nThe combined entries were written to new event {eventManager.lastNewEventNumber.Value}."
-                        + "\r\nReload to see it in the event list.";
+                        $"\r\n\r\nThe combined entries were written to new event {eventManager.lastNewEventNumber.Value}.";
                 }
                 if (eventManager.reassignLanes)
                 {
@@ -160,15 +280,10 @@ namespace Lynx_Event_Combine
         {
             if (eventManager == null || !eventManager.hasCombinedData)
             {
-                MessageBox.Show(
-                    "You must combine events first.",
-                    "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
                 return;
             }
             (var success, var message) = eventManager.SplitLif();
+            UpdateCombineStatus();
             if (success)
             {
                 MessageBox.Show(
@@ -187,6 +302,21 @@ namespace Lynx_Event_Combine
                     MessageBoxIcon.Error
                 );
             }
+        }
+
+        private void clearCombineButton_Click(object sender, EventArgs e)
+        {
+            if (eventManager == null || !eventManager.hasCombinedData)
+            {
+                return;
+            }
+            if (!ConfirmDiscardCombine("Clearing the saved combine"))
+            {
+                return;
+            }
+
+            eventManager.ClearCombineState();
+            UpdateCombineStatus();
         }
 
         private void combineOptionCheckBox_CheckedChanged(object sender, EventArgs e)

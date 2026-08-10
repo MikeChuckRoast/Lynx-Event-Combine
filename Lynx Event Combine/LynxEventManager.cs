@@ -1,4 +1,6 @@
-﻿namespace Lynx_Event_Combine
+﻿using System.Text.Json;
+
+namespace Lynx_Event_Combine
 {
     public class LynxEventManager
     {
@@ -9,16 +11,53 @@
             get { return events.Select(e => e.displayName).ToList(); }
         }
 
-        // Saved events from last combine action
-        private Event? _mainEvent;
-        private List<Event> _eventsToCombine = new List<Event>();
+        // The last combine performed on this event file. Restored from the state file that sits
+        // next to it, so a reload, a restart or a crash cannot lose the ability to split.
+        private CombineRecord? _lastCombine;
+        public CombineRecord? lastCombine
+        {
+            get { return _lastCombine; }
+        }
 
-        // The event that holds the combined entries, and therefore the results, after the
-        // race is run. Same as the main event unless the combine was written to a new event.
-        private Event? _lifSourceEvent;
         public bool hasCombinedData
         {
-            get { return _mainEvent != null && _eventsToCombine.Count > 0; }
+            get { return _lastCombine != null; }
+        }
+
+        /// <summary>
+        /// One line describing the saved combine, for the status area of the form.
+        /// </summary>
+        public string combineDescription
+        {
+            get
+            {
+                if (_lastCombine == null)
+                {
+                    return "";
+                }
+
+                int count = _lastCombine.sources.Count;
+
+                // Where the results land is only worth saying when it is not the main event
+                string target =
+                    _lastCombine.resultsEvent.ToString() == _lastCombine.mainEvent.ev.ToString()
+                        ? ""
+                        : $" → event {_lastCombine.resultsEvent}";
+
+                return $"{_lastCombine.mainEvent.displayName} + {count} {(count == 1 ? "event" : "events")}{target}";
+            }
+        }
+
+        // FinishLynx pairs lynx.evt with lynx.sch, so the saved combine takes the same base name
+        public string combineStateFilePath
+        {
+            get
+            {
+                return Path.Combine(
+                    Path.GetDirectoryName(eventFilePath) ?? "",
+                    Path.GetFileNameWithoutExtension(eventFilePath) + ".combine.json"
+                );
+            }
         }
 
         // Option to remove gendered event name
@@ -41,6 +80,7 @@
             this.eventFilePath = eventFilePath;
             events = new List<Event>();
             LoadEvents();
+            LoadCombineState();
         }
 
         public void LoadEvents()
@@ -51,6 +91,8 @@
                     $"The file at path {eventFilePath} does not exist."
                 );
             }
+
+            events.Clear();
 
             using (var reader = new StreamReader(eventFilePath))
             {
@@ -114,6 +156,96 @@
             return index < values.Length ? values[index] : "";
         }
 
+        private static readonly JsonSerializerOptions combineStateJsonOptions =
+            new JsonSerializerOptions { WriteIndented = true };
+
+        /// <summary>
+        /// Reads the combine saved next to the event file, if there is one. A state file that
+        /// cannot be read, or that describes an event no longer in the file, is discarded and
+        /// reported rather than thrown, since the event file itself is still perfectly usable.
+        /// </summary>
+        public void LoadCombineState()
+        {
+            _lastCombine = null;
+
+            if (!File.Exists(combineStateFilePath))
+            {
+                return;
+            }
+
+            CombineRecord? record;
+            try
+            {
+                record = JsonSerializer.Deserialize<CombineRecord>(
+                    File.ReadAllText(combineStateFilePath),
+                    combineStateJsonOptions
+                );
+            }
+            catch (Exception ex)
+            {
+                lastCombineWarning =
+                    $"The saved combine could not be read: {ex.Message}\r\n\r\n"
+                    + "Combine the events again before splitting the results.";
+                return;
+            }
+
+            if (record == null || record.mainEvent == null || record.resultsEvent == null)
+            {
+                return;
+            }
+
+            // A saved combine only makes sense against the event file it was made from. If the
+            // main event has since gone, the event file was replaced and the saved lane mapping
+            // can no longer be trusted to route results correctly.
+            if (!events.Any(e => record.mainEvent.ev.Matches(e)))
+            {
+                lastCombineWarning =
+                    $"The saved combine refers to event {record.mainEvent.ev}, which is no longer "
+                    + "in this event file.\r\n\r\nIt has been discarded. Combine the events again "
+                    + "before splitting the results.";
+                ClearCombineState();
+                return;
+            }
+
+            _lastCombine = record;
+        }
+
+        private void SaveCombineState()
+        {
+            try
+            {
+                if (_lastCombine == null)
+                {
+                    if (File.Exists(combineStateFilePath))
+                    {
+                        File.Delete(combineStateFilePath);
+                    }
+                    return;
+                }
+
+                File.WriteAllText(
+                    combineStateFilePath,
+                    JsonSerializer.Serialize(_lastCombine, combineStateJsonOptions)
+                );
+            }
+            catch (Exception ex)
+            {
+                lastCombineWarning =
+                    $"The combine could not be saved to {combineStateFilePath}: {ex.Message}\r\n\r\n"
+                    + "Split the results before closing the program or loading another file.";
+            }
+        }
+
+        /// <summary>
+        /// Forgets the saved combine. The event file is left as it is; only the ability to
+        /// split its results is given up.
+        /// </summary>
+        public void ClearCombineState()
+        {
+            _lastCombine = null;
+            SaveCombineState();
+        }
+
         public bool CombineEvents(string mainEventName, List<string> eventNamesToCombine)
         {
             bool noDuplicates = true;
@@ -125,21 +257,20 @@
 
             var mainEvent = events.FirstOrDefault(e => e.displayName.Equals(mainEventName));
             Event? newEvent = null;
+            var eventsToCombine = new List<Event>();
 
             if (mainEvent != null)
             {
-                _mainEvent = mainEvent;
-                _eventsToCombine = events
+                eventsToCombine = events
                     .Where(e => eventNamesToCombine.Contains(e.displayName))
                     .ToList();
 
-                noDuplicates = AssignCombinedLanes(mainEvent, _eventsToCombine);
+                noDuplicates = AssignCombinedLanes(mainEvent, eventsToCombine);
 
                 if (writeToNewEvent)
                 {
-                    newEvent = BuildNewCombinedEvent(mainEvent, _eventsToCombine);
+                    newEvent = BuildNewCombinedEvent(mainEvent, eventsToCombine);
                 }
-                _lifSourceEvent = newEvent;
             }
 
             // Backup the event file
@@ -176,7 +307,7 @@
                     // If this is the main event whose entries we want to combine, write the entries from the eventsToCombine
                     if (isCombinedEvent)
                     {
-                        WriteCombinedEntries(writer, _eventsToCombine);
+                        WriteCombinedEntries(writer, eventsToCombine);
                     }
                 }
 
@@ -191,17 +322,67 @@
                 }
             }
 
-            if (newEvent != null && mainEvent != null)
+            if (mainEvent != null)
             {
-                UpdateScheduleFile(mainEvent, newEvent);
+                if (newEvent != null)
+                {
+                    UpdateScheduleFile(mainEvent, newEvent);
+                    lastNewEventNumber = newEvent.eventNumber;
+                }
 
-                // Keep the in-memory list in step with the file so a second combine
-                // doesn't hand out the same event number again
-                events.Add(newEvent);
-                lastNewEventNumber = newEvent.eventNumber;
+                _lastCombine = BuildCombineRecord(mainEvent, eventsToCombine, newEvent);
+                SaveCombineState();
             }
 
+            // The file now holds the combined entries, so re-read it. Without this the in-memory
+            // events still describe the file as it was before the combine, and the next combine
+            // would write that stale picture back over this one.
+            LoadEvents();
+
             return noDuplicates;
+        }
+
+        /// <summary>
+        /// Captures what a split needs to know: which events took part, and which lane each
+        /// entry was seeded in against the lane it will actually run in.
+        /// </summary>
+        private CombineRecord BuildCombineRecord(
+            Event mainEvent,
+            List<Event> eventsToCombine,
+            Event? newEvent
+        )
+        {
+            return new CombineRecord
+            {
+                mainEvent = BuildCombineSource(mainEvent),
+                sources = eventsToCombine.Select(BuildCombineSource).ToList(),
+                resultsEvent = new EventKey(newEvent ?? mainEvent),
+                removeGenderedEventName = removeGenderedEventName,
+                reassignLanes = reassignLanes,
+                writeToNewEvent = writeToNewEvent,
+                combinedAt = DateTime.Now,
+                splitCompleted = false,
+            };
+        }
+
+        private static CombineSource BuildCombineSource(Event ev)
+        {
+            return new CombineSource
+            {
+                ev = new EventKey(ev),
+                eventName = ev.eventName,
+                displayName = ev.displayName,
+                entries = ev
+                    .entries.Select(entry => new CombinedEntry
+                    {
+                        athleteNumber = entry.athleteNumber,
+                        seededLane = entry.laneNumber,
+                        runLane = string.IsNullOrEmpty(entry.assignedLaneNumber)
+                            ? entry.laneNumber
+                            : entry.assignedLaneNumber,
+                    })
+                    .ToList(),
+            };
         }
 
         /// <summary>
@@ -213,8 +394,8 @@
         {
             bool noDuplicates = true;
 
-            // Drop any assignment left over from a previous combine
-            foreach (var ev in events)
+            // Drop any assignment left over from a previous combine of these same events
+            foreach (var ev in eventsToCombine.Prepend(mainEvent))
             {
                 foreach (var entry in ev.entries)
                 {
@@ -428,16 +609,15 @@
 
         public (bool, string) SplitLif()
         {
-            if (_mainEvent == null)
+            if (_lastCombine == null)
             {
                 return (false, "No events were previously combined.");
             }
 
             // Find LIF file corresponding to the event the combined entries were written to
-            var resultsEvent = _lifSourceEvent ?? _mainEvent;
             string lifFilePath = Path.Combine(
                 Path.GetDirectoryName(eventFilePath) ?? "",
-                $"{resultsEvent.eventNumber.ToString("D3")}-{resultsEvent.roundNumber}-{resultsEvent.heatNumber.ToString("D2")}.lif"
+                _lastCombine.resultsEvent.lifFileName
             );
             if (!File.Exists(lifFilePath))
             {
@@ -447,29 +627,24 @@
             // Read the original LIF file into an array of strings
             var lifFileLines = File.ReadAllLines(lifFilePath);
 
-            // Create a new LIF file for each event in _eventsToCombine
-            foreach (var eventToCombine in _eventsToCombine)
+            // Create a new LIF file for the main event and for every event added to it
+            foreach (var source in _lastCombine.allEvents)
             {
-                if (!WriteFilteredLif(eventToCombine, lifFileLines, lifFilePath))
+                if (!WriteFilteredLif(source, lifFileLines, lifFilePath))
                 {
-                    return (
-                        false,
-                        $"Failed to write LIF file for event: {eventToCombine.displayName}"
-                    );
+                    return (false, $"Failed to write LIF file for event: {source.displayName}");
                 }
             }
-            // Create a new LIF file for the main event
-            if (!WriteFilteredLif(_mainEvent, lifFileLines, lifFilePath))
-            {
-                return (false, $"Failed to write LIF file for event: {_mainEvent.displayName}");
-            }
+
+            _lastCombine.splitCompleted = true;
+            SaveCombineState();
 
             // Great success!
             return (true, "LIF files split successfully.");
         }
 
-        private bool WriteFilteredLif(
-            Event eventToCombine,
+        private static bool WriteFilteredLif(
+            CombineSource eventToCombine,
             string[] lifFileLines,
             string lifFilePath
         )
@@ -478,7 +653,7 @@
             {
                 string newLifFilePath = Path.Combine(
                     Path.GetDirectoryName(lifFilePath) ?? "",
-                    $"{eventToCombine.eventNumber.ToString("D3")}-{eventToCombine.roundNumber}-{eventToCombine.heatNumber.ToString("D2")}.lif"
+                    eventToCombine.ev.lifFileName
                 );
 
                 using (var writer = new StreamWriter(newLifFilePath))
@@ -490,7 +665,7 @@
                         var firstLineSplit = firstLine.Split(',');
                         var restOfLine = string.Join(",", firstLineSplit.Skip(4));
                         var newFirstLine =
-                            $"{eventToCombine.eventNumber},{eventToCombine.roundNumber},{eventToCombine.heatNumber},{eventToCombine.eventName},{restOfLine}";
+                            $"{eventToCombine.ev.number},{eventToCombine.ev.round},{eventToCombine.ev.heat},{eventToCombine.eventName},{restOfLine}";
                         writer.WriteLine(newFirstLine);
                     }
 
@@ -508,9 +683,9 @@
                         // Hand the result back with the lane the athlete was originally seeded in,
                         // which is what the meet management software is expecting
                         writer.WriteLine(
-                            string.IsNullOrEmpty(matchingEntry.assignedLaneNumber)
+                            matchingEntry.runLane.Equals(matchingEntry.seededLane)
                                 ? line
-                                : ReplaceLaneNumber(line, matchingEntry.laneNumber)
+                                : ReplaceLaneNumber(line, matchingEntry.seededLane)
                         );
                     }
                 }
@@ -523,7 +698,10 @@
             }
         }
 
-        private static EventEntry? FindResultInOriginalEntries(string lifLine, Event originalEvent)
+        private static CombinedEntry? FindResultInOriginalEntries(
+            string lifLine,
+            CombineSource originalEvent
+        )
         {
             var splitLine = lifLine.Split(',');
             if (splitLine.Length < 3)
@@ -537,12 +715,8 @@
             {
                 // The result carries the lane the athlete actually ran in, which is the
                 // re-assigned lane whenever the combine renumbered them
-                var runLaneNumber = string.IsNullOrEmpty(entry.assignedLaneNumber)
-                    ? entry.laneNumber
-                    : entry.assignedLaneNumber;
-
                 if (
-                    runLaneNumber.Equals(laneNumber)
+                    entry.runLane.Equals(laneNumber)
                     && (
                         String.IsNullOrEmpty(entry.athleteNumber)
                         || entry.athleteNumber.Equals(athleteNumber)

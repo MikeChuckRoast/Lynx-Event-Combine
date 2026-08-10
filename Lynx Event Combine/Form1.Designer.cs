@@ -38,6 +38,8 @@
             mainEventComboBox = new ComboBox();
             combineButton = new Button();
             splitLifButton = new Button();
+            clearCombineButton = new Button();
+            combineStatusLabel = new Label();
             tableLayoutPanel1 = new TableLayoutPanel();
             tableLayoutPanel2 = new TableLayoutPanel();
             reloadButton = new Button();
@@ -152,7 +154,31 @@
             splitLifButton.Text = "Split LIF file";
             splitLifButton.UseVisualStyleBackColor = true;
             splitLifButton.Click += splitLifButton_Click;
-            // 
+            //
+            // clearCombineButton
+            //
+            clearCombineButton.Anchor = AnchorStyles.None;
+            clearCombineButton.Location = new Point(444, 5);
+            clearCombineButton.Name = "clearCombineButton";
+            clearCombineButton.Size = new Size(75, 23);
+            clearCombineButton.TabIndex = 10;
+            clearCombineButton.Text = "Clear";
+            clearCombineButton.UseVisualStyleBackColor = true;
+            clearCombineButton.Click += clearCombineButton_Click;
+            //
+            // combineStatusLabel
+            //
+            combineStatusLabel.AutoSize = false;
+            combineStatusLabel.AutoEllipsis = true;
+            combineStatusLabel.Dock = DockStyle.Fill;
+            combineStatusLabel.Location = new Point(3, 0);
+            combineStatusLabel.Margin = new Padding(3, 0, 3, 0);
+            combineStatusLabel.Name = "combineStatusLabel";
+            combineStatusLabel.Size = new Size(513, 22);
+            combineStatusLabel.TabIndex = 14;
+            combineStatusLabel.Text = "No event file loaded.";
+            combineStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+            //
             // tableLayoutPanel1
             // 
             tableLayoutPanel1.ColumnCount = 1;
@@ -178,8 +204,8 @@
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 21F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            tableLayoutPanel1.Size = new Size(525, 447);
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));
+            tableLayoutPanel1.Size = new Size(525, 473);
             tableLayoutPanel1.TabIndex = 10;
             // 
             // tableLayoutPanel2
@@ -211,17 +237,22 @@
             // 
             // tableLayoutPanel3
             // 
-            tableLayoutPanel3.ColumnCount = 2;
-            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tableLayoutPanel3.Controls.Add(splitLifButton, 1, 0);
-            tableLayoutPanel3.Controls.Add(combineButton, 0, 0);
+            tableLayoutPanel3.ColumnCount = 3;
+            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tableLayoutPanel3.Controls.Add(combineStatusLabel, 0, 0);
+            tableLayoutPanel3.Controls.Add(combineButton, 0, 1);
+            tableLayoutPanel3.Controls.Add(splitLifButton, 1, 1);
+            tableLayoutPanel3.Controls.Add(clearCombineButton, 2, 1);
+            tableLayoutPanel3.SetColumnSpan(combineStatusLabel, 3);
             tableLayoutPanel3.Dock = DockStyle.Fill;
             tableLayoutPanel3.Location = new Point(3, 410);
             tableLayoutPanel3.Name = "tableLayoutPanel3";
-            tableLayoutPanel3.RowCount = 1;
-            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel3.Size = new Size(519, 34);
+            tableLayoutPanel3.RowCount = 2;
+            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
+            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel3.Size = new Size(519, 60);
             tableLayoutPanel3.TabIndex = 11;
             //
             // tableLayoutPanel5
@@ -392,10 +423,10 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(560, 447);
+            ClientSize = new Size(560, 473);
             Controls.Add(tableLayoutPanel1);
             Icon = (Icon)resources.GetObject("$this.Icon");
-            MinimumSize = new Size(348, 325);
+            MinimumSize = new Size(348, 351);
             Name = "Form1";
             Text = "Lynx Event Combine";
             tableLayoutPanel1.ResumeLayout(false);
@@ -403,6 +434,7 @@
             tableLayoutPanel2.ResumeLayout(false);
             tableLayoutPanel2.PerformLayout();
             tableLayoutPanel3.ResumeLayout(false);
+            tableLayoutPanel3.PerformLayout();
             tableLayoutPanel4.ResumeLayout(false);
             tableLayoutPanel5.ResumeLayout(false);
             tableLayoutPanel5.PerformLayout();
@@ -420,6 +452,8 @@
         private ComboBox mainEventComboBox;
         private Button combineButton;
         private Button splitLifButton;
+        private Button clearCombineButton;
+        private Label combineStatusLabel;
         private TableLayoutPanel tableLayoutPanel1;
         private TableLayoutPanel tableLayoutPanel2;
         private TableLayoutPanel tableLayoutPanel3;
