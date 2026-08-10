@@ -286,5 +286,48 @@ namespace LynxEventCombineTest
         }
 
         #endregion SplitLif Tests
+
+        #region LoadEvents Tests
+        [Fact]
+        public void LoadEvents_HandlesLinesWithMissingTrailingFields()
+        {
+            // Arrange: an event file with no distance column and an entry with no team,
+            // which is what MeetUploader writes
+            string tempFilePath = CopyResourceToTempFile("lynx_short_fields.evt");
+
+            // Act
+            var manager = new LynxEventManager(tempFilePath);
+
+            // Assert
+            Assert.Equal(2, manager.events.Count);
+            Assert.Equal("Boys 100m (1,1,1)", manager.events[0].displayName);
+            Assert.Equal(0, manager.events[0].distance);
+            Assert.Equal(2, manager.events[0].entries.Count);
+
+            // The entry that stops after the first name still loads, with an empty team
+            var entryWithoutTeam = manager.events[0].entries[1];
+            Assert.Equal("2", entryWithoutTeam.laneNumber);
+            Assert.Equal("Jones", entryWithoutTeam.lastName);
+            Assert.Equal("", entryWithoutTeam.teamName);
+
+            // Cleanup
+            File.Delete(tempFilePath);
+        }
+        #endregion LoadEvents Tests
+
+        #region Helpers
+        private static string GetResourcePath(string fileName)
+        {
+            string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? string.Empty;
+            return Path.Combine(projectDirectory, "Resources", fileName);
+        }
+
+        private static string CopyResourceToTempFile(string fileName)
+        {
+            string tempFilePath = Path.GetTempFileName();
+            File.Copy(GetResourcePath(fileName), tempFilePath, overwrite: true);
+            return tempFilePath;
+        }
+        #endregion Helpers
     }
 }

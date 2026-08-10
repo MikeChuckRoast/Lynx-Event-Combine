@@ -51,17 +51,25 @@
                     // Check if the line starts with a number (event definition)
                     if (int.TryParse(values[0], out int eventNumber))
                     {
+                        // Trailing columns are optional, so a line may stop at the event name
+                        int roundNumber = int.TryParse(GetField(values, 1), out int round)
+                            ? round
+                            : 1;
+                        int heatNumber = int.TryParse(GetField(values, 2), out int heat) ? heat : 1;
+                        string eventName = GetField(values, 3);
+
                         currentEvent = new Event
                         {
                             eventNumber = eventNumber,
-                            roundNumber = int.Parse(values[1]),
-                            heatNumber = int.Parse(values[2]),
-                            eventName = values[3],
-                            distance = double.TryParse(values[4], out double distance)
+                            roundNumber = roundNumber,
+                            heatNumber = heatNumber,
+                            eventName = eventName,
+                            distance = double.TryParse(GetField(values, 4), out double distance)
                                 ? distance
                                 : 0,
                             fullTextString = line,
-                            displayName = $"{values[3]} ({eventNumber},{values[1]},{values[2]})",
+                            displayName =
+                                $"{eventName} ({eventNumber},{roundNumber},{heatNumber})",
                         };
                         events.Add(currentEvent);
                     }
@@ -69,17 +77,26 @@
                     {
                         var entry = new EventEntry
                         {
-                            athleteNumber = values[1],
-                            laneNumber = values[2],
-                            lastName = values[3],
-                            firstName = values[4],
-                            teamName = values[5],
+                            athleteNumber = GetField(values, 1),
+                            laneNumber = GetField(values, 2),
+                            lastName = GetField(values, 3),
+                            firstName = GetField(values, 4),
+                            teamName = GetField(values, 5),
                             fullTextString = line,
                         };
                         currentEvent.entries.Add(entry);
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Reads a comma separated column, treating columns past the end of the line as empty.
+        /// Lynx files leave optional trailing columns off entirely rather than padding them.
+        /// </summary>
+        private static string GetField(string[] values, int index)
+        {
+            return index < values.Length ? values[index] : "";
         }
 
         public bool CombineEvents(string mainEventName, List<string> eventNamesToCombine)
