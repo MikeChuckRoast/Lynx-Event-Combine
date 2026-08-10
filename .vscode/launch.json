@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Lynx Event Combine",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/Lynx Event Combine/bin/Debug/net10.0-windows/Lynx Event Combine.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/Lynx Event Combine",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ]
+}
